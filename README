@@ -1,47 +1,76 @@
-Net::Pcap-0.01
+README for Net::Pcap 0.03
+=========================
 
-This is a very first release of a SWIG generated Perl5 Module which
-uses Van Jacobsen's libpcap for packet capture on Ethernet like
-interfaces. You do not need SWIG to install this module, (though it's
-highly recommended for anyone developing this sort of code). You *do*
-need libpcap v0.3 or above, available from
+The Net::Pcap module is a Perl binding to the LBL pcap(3) packet
+capture library.  It is a re-implementation of Peter Lister's
+original Net::Pcap version 0.01.
 
-ftp://ftp.ee.lbl.gov/libpcap.tar.Z
+Net::Pcap version 0.03 contains the following improvements over
+previous versions:
 
-You will, of course need an OS with a packetfilter that pcap
-understands, and support for that filter needs to be configured into
-your kernel. Read the docs for libpcap and your OS.
+	- all pcap library functions fully implemented
 
-Don't try to install Net::Pcap until you have installed libpcap
-somewhere on your system.
-------------------------------------------------------------------------
-Done that? Right, back in the Pcap-0.01 directory,
+	- packet header and statistical information passed as
+	  perl hashes
 
-perl Makefile.PL
-make
-make test
-make install
+	- POD documentation
 
-Net::Pcap was designed so that the libpcap functions loop and dispatch
-can run Perl5 CODE refs as callbacks to process the packets as they
-are captured with all the nice pattern matching facilities of PERL.
-The programming interface is Alpha - i.e. subject to change without
-notice, though in fact most of it is strongly dictated by pcap itself,
-and hence unlikely to change much.
+The source code for the LBL pcap library can be found at
+ftp://ftp.ee.lbl.gov/libpcap.tar.Z.  If you're running Linux, there
+should be a packaged up version of libpcap available for your system.
+Check the nearest mirror site of your favourite distribution.
 
-The package was originally developed for the specific purpose of
-tracking IP addresses on a University network by tracking ARP
-broadcast packets. The current version of this script is arpmon, but
-this requires the Msql database, and a table structure like
-Cranfield's, so it's just an example, don't expect it to run.
 
-There is an example script, packetdump, which does not attempt to
-emulate the lbl tcpdump, but is a basic demonstration of handling
-packets. This should run OK as soon as Pcap is installed
-successfully. You will probably need to be root on your system to get
-access to the packetfilter; if you are unprivileged, you'll see 
+Installation Notes
+==================
 
-Operation not permitted at packetdump line 117.
-------------------------------------------------------------------------
+If your pcap header files are installed somewhere strange, create the
+Makefile using the INC and/or LIBS option.
 
-p.lister@cranfield.ac.uk 26-Aug-1997
+	$ perl Makefile.PL INC=-I/usr/local/include/pcap \
+		LIBS='-L/usr/lib/pcap -lpcap'
+
+Compile the extension as per usual:
+
+	$ make
+	$ make test
+
+To install the extension, as root type:
+
+	# make install
+
+A ANSI-compliant compiler is required to compile the extension.  For
+most of the tests, root access is required since opening a network
+interface in promiscuous mode is a privileged operation.  Some tests
+also require a working network interface with traffic on it.  Consult
+the source for individual tests for more information.
+
+Net::Pcap has been tested on the following systems, but is likely to
+run on many more.
+
+	- Solaris 2.6, gcc 2.8.1
+	- Linux 2.2, gcc 2.8.1
+
+
+Miscellaneous
+=============
+
+The original version of Net::Pcap, version 0.01, was written by Peter
+Lister <p.lister@cranfield.ac.uk>.
+
+Version 0.02 was created by Bo Adler <thumper@alumni.caltech.edu> and
+not uploaded to CPAN.  It can be found at:
+
+http://www.buttsoft.com/~thumper/software/perl/Net-Pcap/
+
+Thanks to David N. Blank-Edelman <dnb@ccs.neu.edu> for testing and
+general polishing up of this version of Net::Pcap.
+
+Copyright (c) 1999 Tim Potter. All rights reserved. This program is free 
+software; you can redistribute it and/or modify it under the same terms 
+as Perl itself.
+
+
+25/3/99
+Tim Potter
+tpot@acsys.anu.edu.au
