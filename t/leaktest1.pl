@@ -1,9 +1,9 @@
-#!/usr/bin/perl
+#!/usr/bin/perl -w
 #
 # Test for memory leaks by sitting in an infinite loop and flood
 # pinging from another window.  Memory leaks become apparent quickly.
 #
-# $Id: leaktest1.pl,v 1.2 1999/03/14 03:14:09 tpot Exp $
+# $Id: leaktest1.pl,v 1.3 1999/05/05 02:11:58 tpot Exp $
 #
 
 use strict;

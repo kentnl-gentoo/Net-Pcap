@@ -1,8 +1,8 @@
-#!/usr/bin/perl
+#!/usr/bin/perl -w
 #
 # Test open_live functions
 #
-# $Id: 03-openlive.t,v 1.4 1999/03/15 06:33:29 tpot Exp $
+# $Id: 03-openlive.t,v 1.5 1999/05/05 02:11:55 tpot Exp $
 #
 
 use strict;

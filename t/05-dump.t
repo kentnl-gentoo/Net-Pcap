@@ -1,8 +1,8 @@
-#!/usr/bin/perl
+#!/usr/bin/perl -w
 #
 # Test loop function
 #
-# $Id: 05-dump.t,v 1.5 1999/03/15 06:37:26 tpot Exp $
+# $Id: 05-dump.t,v 1.6 1999/05/05 02:11:55 tpot Exp $
 #
 
 use strict;

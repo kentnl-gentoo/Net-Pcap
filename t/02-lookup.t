@@ -1,8 +1,8 @@
-#!/usr/bin/perl
+#!/usr/bin/perl -w
 #
 # Test lookup functions
 #
-# $Id: 02-lookup.t,v 1.4 1999/03/15 06:33:29 tpot Exp $
+# $Id: 02-lookup.t,v 1.5 1999/05/05 02:11:54 tpot Exp $
 #
 
 use strict;

@@ -1,8 +1,8 @@
-#!/usr/bin/perl
+#!/usr/bin/perl -w
 #
 # Test next function
 #
-# $Id: 12-next.t,v 1.5 1999/03/15 06:33:32 tpot Exp $
+# $Id: 12-next.t,v 1.7 2000/05/15 04:56:52 tpot Exp $
 #
 
 use strict;
@@ -73,15 +73,7 @@ for my $count (1..10) {
 	print("no pkt received (but that's OK)\n");
     }
 
-    if (!defined(%hdr) or !defined($pkt)) {
-	print("Bad args passed to callback\n");
-	print("header is not defined\n"), if (!defined(%hdr));
-	print("packet is not defined\n"), if (!defined($pkt));
-	print("not ok\n");
-	exit;
-    }
-
-    print("$count: received packet of len $hdr{len}\n");
+    print("$count: received packet of length $hdr{len} bytes\n");
 }
 
 Net::Pcap::close($pcap_t);

@@ -1,8 +1,8 @@
-#!/usr/bin/perl
+#!/usr/bin/perl -w
 #
 # Test open_offline
 #
-# $Id: 06-offline.t,v 1.6 1999/03/15 06:37:26 tpot Exp $
+# $Id: 06-offline.t,v 1.7 1999/05/05 02:11:56 tpot Exp $
 #
 
 use strict;

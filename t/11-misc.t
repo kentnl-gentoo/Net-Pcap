@@ -1,8 +1,8 @@
-#!/usr/bin/perl
+#!/usr/bin/perl -w
 #
 # Test misc functions
 #
-# $Id: 11-misc.t,v 1.3 1999/03/15 06:33:31 tpot Exp $
+# $Id: 11-misc.t,v 1.4 1999/05/05 02:11:57 tpot Exp $
 #
 
 use strict;

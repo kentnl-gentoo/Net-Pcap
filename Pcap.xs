@@ -7,7 +7,7 @@
  * software; you can redistribute it and/or modify it under the same terms 
  * as Perl itself.
  *
- * $Id: Pcap.xs,v 1.9 1999/03/25 00:15:33 tpot Exp $
+ * $Id: Pcap.xs,v 1.11 2000/05/15 05:02:50 tpot Exp $
  *
  */
 
@@ -22,6 +22,18 @@ extern "C" {
 
 #ifdef __cplusplus
 }
+#endif
+
+/* The following taken from ext/Data/Dumper/Dumper.c in the Perl 5.6.0
+   distribution. */
+
+#if PERL_VERSION < 5
+#  ifndef PL_sv_undef
+#    define PL_sv_undef sv_undef
+#  endif
+#  ifndef PL_na
+#    define PL_na na
+#  endif
 #endif
 
 /* Wrapper for callback function */
@@ -79,7 +91,7 @@ pcap_lookupdev(err)
 			if (RETVAL == NULL) {
 				sv_setpv(err_sv, errbuf);
 			} else {
-				err_sv = &sv_undef;
+				err_sv = &PL_sv_undef;
 			}
 
 			safefree(errbuf);
@@ -113,7 +125,7 @@ pcap_lookupnet(device, net, mask, err)
 			if (RETVAL != -1) {
 				sv_setiv(net_sv, netp);
 				sv_setiv(mask_sv, maskp);
-				err_sv = &sv_undef;
+				err_sv = &PL_sv_undef;
 			} else {
 				sv_setpv(err_sv, errbuf);
 			}
@@ -151,7 +163,7 @@ pcap_open_live(device, snaplen, promisc, to_ms, err)
 			if (RETVAL == NULL) {
 				sv_setpv(err_sv, errbuf);
 			} else {
-				err_sv = &sv_undef;
+				err_sv = &PL_sv_undef;
 			}
 
 			safefree(errbuf);
@@ -178,7 +190,7 @@ pcap_open_offline(fname, err)
 			if (RETVAL == NULL) {
 				sv_setpv(err_sv, errbuf);
 			} else {
-				err_sv = &sv_undef;
+				err_sv = &PL_sv_undef;
 			}
 
 			safefree(errbuf);
@@ -281,7 +293,7 @@ pcap_compile(p, fp, str, optimize, mask)
 	CODE:
 		if (SvROK(fp)) {
 			struct bpf_program *real_fp = safemalloc(sizeof(fp));
-			
+
 			RETVAL = pcap_compile(p, real_fp, str, optimize, mask);
 
 			sv_setref_pv(SvRV(ST(1)), "struct bpf_programPtr",
@@ -382,7 +394,7 @@ pcap_dump(p, h, sp)
 			        real_h.len = SvIV(*sv);
 			}
 
-			real_sp = SvPV(sp, na);
+			real_sp = SvPV(sp, PL_na);
 
 			/* Call pcap_dump() */
 
@@ -421,7 +433,7 @@ pcap_next(p, h)
 				RETVAL = newSVpv((char *)result, 
 						 real_h.caplen);
 			} else 
-				RETVAL = &sv_undef;
+				RETVAL = &PL_sv_undef;
 
 		} else croak("arg2 not a hash ref");	
 

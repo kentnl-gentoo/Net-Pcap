@@ -1,8 +1,8 @@
-#!/usr/bin/perl
+#!/usr/bin/perl -w
 #
 # Test module import
 #
-# $Id: 01-module.t,v 1.1 1999/03/10 02:48:40 tpot Exp $
+# $Id: 01-module.t,v 1.2 1999/05/05 02:11:54 tpot Exp $
 #
 
 use strict;

@@ -4,13 +4,13 @@
 # An interface to the LBL pcap(3) library.  This module simply
 # bootstraps the extensions defined in Pcap.xs
 #
-# Copyright (c) 1999 Tim Potter. All rights reserved. This program is free 
-# software; you can redistribute it and/or modify it under the same terms 
-# as Perl itself.
+# Copyright (c) 1999-2000 Tim Potter. All rights reserved. This program is
+# free# software; you can redistribute it and/or modify it under the same
+# terms as Perl itself.
 #
-# Comments/suggestions to tpot@acsys.anu.edu.au
+# Comments/suggestions to tpot@frungy.org
 #
-# $Id: Pcap.pm,v 1.7 1999/03/24 23:26:42 tpot Exp $
+# $Id: Pcap.pm,v 1.9 2000/05/15 05:02:50 tpot Exp $
 #
 
 package Net::Pcap;
@@ -23,7 +23,7 @@ use vars qw($VERSION @ISA);
 @ISA = qw(Exporter DynaLoader);
 @EXPORT = qw();
 
-$VERSION = '0.03';
+$VERSION = '0.04';
 
 bootstrap Net::Pcap $VERSION;
 
@@ -35,7 +35,7 @@ __END__
 
 =head1 NAME
 
-C<Net::Pcap> - Interface to pcap(3) LBL packet capture library
+B<Net::Pcap> - Interface to pcap(3) LBL packet capture library
 
 =head1 SYNOPSIS
 
@@ -43,7 +43,7 @@ C<Net::Pcap> - Interface to pcap(3) LBL packet capture library
 
 =head1 DESCRIPTION
 
-C<Net::Pcap> is a Perl binding to the LBL pcap(3) library, version
+B<Net::Pcap> is a Perl binding to the LBL pcap(3) library, version
 0.4.  The README for libpcap describes itself as:
 
   "a system-independent interface for user-level packet capture.
@@ -53,13 +53,13 @@ C<Net::Pcap> is a Perl binding to the LBL pcap(3) library, version
 
 =head1 FUNCTIONS
 
-All functions defined by C<Net::Pcap> are direct mappings to the
+All functions defined by B<Net::Pcap> are direct mappings to the
 libpcap functions.  Consult the pcap(3) documentation and source code
 for more information.
 
-Arguments that change a parameter, for example Net::Pcap::lookupdev(),
+Arguments that change a parameter, for example B<Net::Pcap::lookupdev()>,
 are passed that parameter as a reference.  This is to retain
-compatibility with previous versions of Net::Pcap.
+compatibility with previous versions of B<Net::Pcap>.
 
 =head2 Lookup functions
 
@@ -68,15 +68,15 @@ compatibility with previous versions of Net::Pcap.
 =item B<Net::Pcap::lookupdev(\$err);>
 
 Returns the name of a network device that can be used with
-Net::Pcap::open_live() function.  On error, the $err parameter is
+B<Net::Pcap::open_live() function>.  On error, the $err parameter is
 filled with an appropriate error message else it is undefined.
 
 =item B<Net::Pcap::lookupnet($dev, \$net, \$mask, \$err);>
 
 Determine the network number and netmask for the device specified in
-C<$dev>.  The function returns 0 on success and sets the C<$net> and
-C<$mask> parameters with values.  On failure it returns -1 and the
-C<$err> parameter is filled with an appropriate error message.z
+$dev.  The function returns 0 on success and sets the $net and
+$mask parameters with values.  On failure it returns -1 and the
+$err parameter is filled with an appropriate error message.
 
 =head2 Packet capture functions
 
@@ -119,7 +119,7 @@ The total length of the packet.
 =item * caplen
 
 The actual captured length of the packet data.  This corresponds to
-the snapshot length parameter passed to Net::Pcap::open_live().
+the snapshot length parameter passed to B<Net::Pcap::open_live()>.
 
 =item * tv_sec
 
@@ -180,14 +180,14 @@ capture descriptor $pcap_t.
 
 Open a savefile for writing and return a descriptor for doing so.  If
 $filename is "-" data is written to standard output.  On error, the
-return value is undefined and Net::Pcap::geterr() can be used to
+return value is undefined and B<Net::Pcap::geterr()> can be used to
 retrieve the error text.
 
 =item B<Net::Pcap::dump($pcap_dumper_t, \%hdr, $pkt);>
 
 Dump the packet described by header %hdr and packet data $pkt to the
 savefile associated with $pcap_dumper_t.  The packet header has the
-same format as that passed to the Net::Pcap::loop() callback.
+same format as that passed to the B<Net::Pcap::loop()> callback.
 
 =item B<Net::Pcap::dump_close($pcap_dumper_t);>
 
@@ -206,7 +206,7 @@ Returns the link layer type associated with the currently open device.
 =item B<Net::Pcap::snapshot($pcap_t);>
 
 Returns the snapshot length (snaplen) specified in the call to
-Net::Pcap::open_live().
+B<Net::Pcap::open_live()>.
 
 =item B<Net::Pcap::is_swapped($pcap_t);>
 
@@ -230,15 +230,15 @@ capture device $pcap_t.  The hash contains the following fields.
 
 =over
 
-=item * C<ps_recv>
+=item * B<ps_recv>
 
 The number of packets received by the packet capture software.
 
-=item * C<ps_drop>
+=item * B<ps_drop>
 
 The number of packets dropped by the packet capture software.
 
-=item * C<ps_ifdrop>
+=item * B<ps_ifdrop>
 
 The number of packets dropped by the network interface.
 
@@ -247,12 +247,12 @@ The number of packets dropped by the network interface.
 =item B<Net::Pcap::file($pcap_t);>
 
 Return the filehandle associated with a savefile opened with
-Net::Pcap::open_offline().
+B<Net::Pcap::open_offline()>.
 
 =item B<Net::Pcap::fileno($pcap_t);>
 
 Return the file number of the network device opened with
-Net::Pcap::open_live().
+B<Net::Pcap::open_live()>.
 
 =back
 
@@ -278,14 +278,9 @@ standard error, prefixed by $prefix.
 
 =head1 LIMITATIONS
 
-The following limitations apply to this version of C<Net::Pcap>.
+The following limitations apply to this version of B<Net::Pcap>.
 
 =over 
-
-=item *
-
-The memory associated with filters created using Net::Pcap::compile()
-is not disposed of.
 
 =item *
 
@@ -296,12 +291,12 @@ current at any time as they are both stored in global variables.
 
 =head1 EXAMPLES
 
-See the 't' directory of the C<Net::Pcap> distribution for examples
+See the 't' directory of the B<Net::Pcap> distribution for examples
 on using this module.
 
 =head1 COPYRIGHT
 
-Copyright (c) 1999 Tim Potter. All rights reserved. This program is
+Copyright (c) 1999-2000 Tim Potter. All rights reserved. This program is
 free software; you can redistribute it and/or modify it under the same
 terms as Perl itself.
 
@@ -309,12 +304,10 @@ terms as Perl itself.
 
 pcap(3), tcpdump(8)
 
-The source code for libpcap is available from ftp://ftp.ee.lbl.gov/libpcap.tar.Z
+The source code for libpcap is available from B<ftp://ftp.ee.lbl.gov/libpcap.tar.Z>
 
 =head1 AUTHOR
 
-Tim Potter E<lt>tpot@acsys.anu.edu.auE<gt>
+Tim Potter E<lt>tpot@frungy.orgE<gt>
 
 =cut
-
-# any real autoloaded methods go after this line

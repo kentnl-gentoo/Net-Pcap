@@ -1,8 +1,8 @@
-#!/usr/bin/perl
+#!/usr/bin/perl -w
 #
 # Test stats
 #
-# $Id: 07-stats.t,v 1.4 1999/03/15 06:33:30 tpot Exp $
+# $Id: 07-stats.t,v 1.5 1999/05/05 02:11:56 tpot Exp $
 #
 
 use strict;

@@ -1,8 +1,8 @@
-#!/usr/bin/perl
+#!/usr/bin/perl -w
 #
 # Test dispatch function
 #
-# $Id: 13-dispatch.t,v 1.3 1999/03/15 06:33:32 tpot Exp $
+# $Id: 13-dispatch.t,v 1.4 1999/05/05 02:11:58 tpot Exp $
 #
 
 use strict;

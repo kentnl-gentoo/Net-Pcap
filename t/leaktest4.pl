@@ -1,8 +1,8 @@
-#!/usr/bin/perl
+#!/usr/bin/perl -w
 #
 # Test for memory leaks in dump() function
 #
-# $Id: leaktest4.pl,v 1.2 1999/03/14 03:14:10 tpot Exp $
+# $Id: leaktest4.pl,v 1.3 1999/05/05 02:11:59 tpot Exp $
 #
 
 use strict;

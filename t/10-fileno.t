@@ -1,8 +1,8 @@
-#!/usr/bin/perl
+#!/usr/bin/perl -w
 #
 # Test loop function
 #
-# $Id: 10-fileno.t,v 1.5 1999/03/15 06:37:26 tpot Exp $
+# $Id: 10-fileno.t,v 1.7 2000/05/15 04:56:37 tpot Exp $
 #
 
 use strict;
@@ -11,7 +11,7 @@ use English;
 use ExtUtils::testlib;
 use Net::Pcap;
 
-print("1..4\n");
+print("1..2\n");
 
 my($dev, $pcap_t, $pcap_dumper_t, $err);
 my $dumpfile = "/tmp/Net-Pcap-dump.$$";
@@ -71,30 +71,11 @@ if (!defined($pcap_t)) {
     exit;
 }
 
-my($fh, $fileno);
-
-$fh = Net::Pcap::file($pcap_t);
-$fileno = Net::Pcap::fileno($pcap_t);
-
-if (!defined($fh)) {
-    print("bad file handle returned by Net::Pcap::file\n");
-    print("not ok\n");
-} else {
-    print("ok\n");
-}
-
-if ($fileno != -1) {
-    print("Bad fileno returned by Net::Pcap::fileno\n");
-    print("not ok\n");
-} else {
-    print("ok\n");
-}
-
-Net::Pcap::close($pcap_t);
-
 #
 # Test file and fileno on live connection
 #
+
+my($fh, $fileno);
 
 $dev = Net::Pcap::lookupdev(\$err);
 $pcap_t = Net::Pcap::open_live($dev, 1024, 1, 0, \$err);
@@ -117,6 +98,7 @@ if ($fileno < 0) {
     print("Bad fileno returned by Net::Pcap::fileno\n");
     print("not ok\n");
 } else {
+    print("File descriptor returned is $fileno\n");
     print("ok\n");
 }
 
