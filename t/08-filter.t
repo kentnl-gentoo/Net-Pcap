@@ -15,7 +15,7 @@ print("1..2\n");
 
 # Must run as root
 
-if ($UID != 0) {
+if ($UID != 0 && $^O !~ /cygwin/i) {
     print("not ok\n");
     exit;
 }

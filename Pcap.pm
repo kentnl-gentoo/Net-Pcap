@@ -23,7 +23,7 @@ use vars qw($VERSION @ISA);
 @ISA = qw(Exporter DynaLoader);
 @EXPORT = qw();
 
-$VERSION = '0.04';
+$VERSION = '0.05';
 
 bootstrap Net::Pcap $VERSION;
 
@@ -44,7 +44,7 @@ B<Net::Pcap> - Interface to pcap(3) LBL packet capture library
 =head1 DESCRIPTION
 
 B<Net::Pcap> is a Perl binding to the LBL pcap(3) library, version
-0.4.  The README for libpcap describes itself as:
+0.7.2.  The README for libpcap describes itself as:
 
   "a system-independent interface for user-level packet capture.
   libpcap provides a portable framework for low-level network
@@ -68,6 +68,12 @@ compatibility with previous versions of B<Net::Pcap>.
 =item B<Net::Pcap::lookupdev(\$err);>
 
 Returns the name of a network device that can be used with
+B<Net::Pcap::open_live() function>.  On error, the $err parameter is
+filled with an appropriate error message else it is undefined.
+
+=item B<Net::Pcap::findalldevs(\$err);>
+
+Returns a list of all network device names that can be used with
 B<Net::Pcap::open_live() function>.  On error, the $err parameter is
 filled with an appropriate error message else it is undefined.
 

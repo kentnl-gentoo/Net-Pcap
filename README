@@ -1,3 +1,18 @@
+README for Net::Pcap 0.05
+=========================
+
+Primarily fixes for running under Cygwin with winpcap (see
+http://winpcap.polito.it/ -- you should install the SDK) and
+providing a wrapper for findalldevs (which is tremendously
+useful under cygwin since Windows' interface names are horribly
+complicated).
+
+	- test now pass under cygwin by disabling the root user check
+	- lookupdev returns the first item from findalldevs
+        - findalldevs wrapper available
+
+by Marco Carnut <kiko@tempest.com.br> 2003-jun-14
+
 README for Net::Pcap 0.04
 =========================
 

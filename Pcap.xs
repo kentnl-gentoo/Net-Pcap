@@ -40,6 +40,7 @@ extern "C" {
 
 SV *callback_fn;
 
+
 void callback_wrapper(u_char *user, const struct pcap_pkthdr *h,
 	const u_char *pkt)
 {
@@ -85,8 +86,18 @@ pcap_lookupdev(err)
 		if (SvROK(err)) {
 			char *errbuf = safemalloc(PCAP_ERRBUF_SIZE);
 			SV *err_sv = SvRV(err);
+			char *dev;
 
-			RETVAL = pcap_lookupdev(errbuf);
+			dev = pcap_lookupdev(errbuf);
+                        if (!strcmp(dev,"\\")) {
+				pcap_if_t *alldevs;
+				if (pcap_findalldevs(&alldevs, errbuf) == -1) {
+     					sv_setpv(err_sv, errbuf);
+				} else {
+					dev = alldevs->name;
+				}
+			} 
+			RETVAL = dev;
 
 			if (RETVAL == NULL) {
 				sv_setpv(err_sv, errbuf);
@@ -318,6 +329,26 @@ void
 pcap_perror(p, prefix)
 	pcap_t *p
 	char *prefix
+
+void
+pcap_findalldevs(err)
+	SV *err
+
+	PPCODE:
+		if (SvROK(err)) {
+			pcap_if_t *alldevs;
+			pcap_if_t *d;
+			SV *err_sv = SvRV(err);
+			char *errbuf = safemalloc(PCAP_ERRBUF_SIZE);
+			if (pcap_findalldevs(&alldevs, errbuf) == -1) {
+     				sv_setpv(err_sv, errbuf);
+	   	        } else {
+				for (d=alldevs;d;d=d->next) {
+				XPUSHs(sv_2mortal(newSVpv(d->name, 0)));
+				}
+			}
+		} else
+			croak ("arg1 not a reference");
 
 int
 pcap_stats(p, ps)
