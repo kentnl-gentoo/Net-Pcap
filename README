@@ -1,0 +1,47 @@
+Net::Pcap-0.01
+
+This is a very first release of a SWIG generated Perl5 Module which
+uses Van Jacobsen's libpcap for packet capture on Ethernet like
+interfaces. You do not need SWIG to install this module, (though it's
+highly recommended for anyone developing this sort of code). You *do*
+need libpcap v0.3 or above, available from
+
+ftp://ftp.ee.lbl.gov/libpcap.tar.Z
+
+You will, of course need an OS with a packetfilter that pcap
+understands, and support for that filter needs to be configured into
+your kernel. Read the docs for libpcap and your OS.
+
+Don't try to install Net::Pcap until you have installed libpcap
+somewhere on your system.
+------------------------------------------------------------------------
+Done that? Right, back in the Pcap-0.01 directory,
+
+perl Makefile.PL
+make
+make test
+make install
+
+Net::Pcap was designed so that the libpcap functions loop and dispatch
+can run Perl5 CODE refs as callbacks to process the packets as they
+are captured with all the nice pattern matching facilities of PERL.
+The programming interface is Alpha - i.e. subject to change without
+notice, though in fact most of it is strongly dictated by pcap itself,
+and hence unlikely to change much.
+
+The package was originally developed for the specific purpose of
+tracking IP addresses on a University network by tracking ARP
+broadcast packets. The current version of this script is arpmon, but
+this requires the Msql database, and a table structure like
+Cranfield's, so it's just an example, don't expect it to run.
+
+There is an example script, packetdump, which does not attempt to
+emulate the lbl tcpdump, but is a basic demonstration of handling
+packets. This should run OK as soon as Pcap is installed
+successfully. You will probably need to be root on your system to get
+access to the packetfilter; if you are unprivileged, you'll see 
+
+Operation not permitted at packetdump line 117.
+------------------------------------------------------------------------
+
+p.lister@cranfield.ac.uk 26-Aug-1997
