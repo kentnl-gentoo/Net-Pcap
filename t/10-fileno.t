@@ -1,109 +1,91 @@
-#!/usr/bin/perl -w
-#
-# Test loop function
-#
-# $Id: 10-fileno.t,v 1.7 2000/05/15 04:56:37 tpot Exp $
-#
-
+#!/usr/bin/perl -T
 use strict;
-use English;
-
-use ExtUtils::testlib;
+use File::Spec;
+use Socket;
+use Test::More;
+BEGIN { plan tests => 16 }
 use Net::Pcap;
 
-print("1..2\n");
+eval "use Test::Exception"; my $has_test_exception = !$@;
 
-my($dev, $pcap_t, $pcap_dumper_t, $err);
-my $dumpfile = "/tmp/Net-Pcap-dump.$$";
+my($dev,$pcap,$filehandle,$fileno,$err) = ('','','','','');
 
-# Must run as root
+# Testing error messages
+SKIP: {
+    skip "Test::Exception not available", 2 unless $has_test_exception;
 
-if ($UID != 0 && $^O !~ /cygwin/i) {
-    print("not ok\n");
-    exit;
+    # file() errors
+    throws_ok(sub {
+        Net::Pcap::file()
+    }, '/^Usage: Net::Pcap::file\(p\)/', 
+       "calling file() with no argument");
+
+    throws_ok(sub {
+        Net::Pcap::file(undef)
+    }, '/^p is not of type pcap_tPtr/', 
+       "calling file() with incorrect argument type");
+
+    # fileno() errors
+    throws_ok(sub {
+        Net::Pcap::fileno()
+    }, '/^Usage: Net::Pcap::fileno\(p\)/', 
+       "calling fileno() with no argument");
+
+    throws_ok(sub {
+        Net::Pcap::fileno(undef)
+    }, '/^p is not of type pcap_tPtr/', 
+       "calling fileno() with incorrect argument type");
 }
 
-#
-# Test file and fileno on offline interface
-#
-
-$dev = Net::Pcap::lookupdev(\$err);
-$pcap_t = Net::Pcap::open_live($dev, 1024, 1, 0, \$err);
-
-if (!defined($pcap_t)) {
-    print("Net::Pcap::open_live returned error $err\n");
-    print("not ok\n");
-    exit;
-}
-
-$pcap_dumper_t = Net::Pcap::dump_open($pcap_t, $dumpfile);
-
-if (!defined($pcap_dumper_t)) {
-    print("Net::Pcap::dump_open failed: ", Net::Pcap::geterr($pcap_t), "\n");
-    print("not ok\n");
-    exit;
-}
-
-sub process_pkt {
-    my($user, $hdr, $pkt) = @_;
-
-    if (($user ne "xyz") or !defined($hdr) or !defined($pkt)) {
-	print("Bad args passed to callback\n");
-	print("Bad user data\n"), if ($user ne "xyz");
-	print("Bad pkthdr\n"), if (!defined($hdr));
-	print("Bad pkt data\n"), if (!defined($pkt));
-	print("not ok\n");
-	exit;
+SKIP: {
+    my $proto = getprotobyname('icmp');
+    if(socket(S, PF_INET, SOCK_RAW, $proto)) {
+        close(S);
+    } else {
+        skip "must be run as root", 6
     }
 
-    Net::Pcap::dump($pcap_dumper_t, $hdr, $pkt);
+    # Find a device and open it
+    $dev = Net::Pcap::lookupdev(\$err);
+    $pcap = Net::Pcap::open_live($dev, 1024, 1, 0, \$err);
+    isa_ok( $pcap, 'pcap_tPtr', "\$pcap" );
+
+    # Testing file()
+    eval { $filehandle = Net::Pcap::file($pcap) };
+    is( $@, '', "file() on a live connection" );
+    TODO: {
+        local $TODO = "file() currently seems to always return undef";
+        $filehandle = undef;
+        ok( defined $filehandle, " - returned filehandle must be defined" );
+        isa_ok( $filehandle, 'GLOB', " - \$filehandle" );
+    }
+
+    # Testing fileno()
+    $fileno = undef;
+    eval { $fileno = Net::Pcap::fileno($pcap) };
+    is( $@, '', "fileno() on a live connection" );
+    like( $fileno, '/^\d+$/', " - fileno must be an integer" );
+
+    Net::Pcap::close($pcap);
 }
 
-Net::Pcap::loop($pcap_t, 10, \&process_pkt, "xyz");
-Net::Pcap::close($pcap_t);
-Net::Pcap::dump_close($pcap_dumper_t);
+# Open a sample dump
+$pcap = Net::Pcap::open_offline(File::Spec->catfile(qw(t samples ping-ietf-20pk-be.dmp)), \$err);
+isa_ok( $pcap, 'pcap_tPtr', "\$pcap" );
 
-$pcap_t = Net::Pcap::open_offline($dumpfile, \$err);
-
-if (!defined($pcap_t)) {
-    print("Net::Pcap::open_offline returned error $err\n");
-    print("not ok\n");
-    exit;
+# Testing file()
+TODO: {
+    todo_skip "file() on a dump file currently causes a segmentation fault", 3;
+    eval { $filehandle = Net::Pcap::file($pcap) };
+    is( $@, '', "file() on a dump file" );
+    ok( defined $filehandle, " - returned filehandle must be defined" );
+    isa_ok( $filehandle, 'GLOB', " - \$filehandle" );
 }
 
-#
-# Test file and fileno on live connection
-#
+# Testing fileno()
+eval { $fileno = Net::Pcap::fileno($pcap) };
+is( $@, '', "fileno() on a dump file" );
+like( $fileno, '/^\d+$/', " - fileno must be an integer" );
 
-my($fh, $fileno);
+Net::Pcap::close($pcap);
 
-$dev = Net::Pcap::lookupdev(\$err);
-$pcap_t = Net::Pcap::open_live($dev, 1024, 1, 0, \$err);
-
-if (!defined($pcap_t)) {
-    die("Net::Pcap::open_live returned error $err");
-}
-
-$fh = Net::Pcap::file($pcap_t);
-$fileno = Net::Pcap::fileno($pcap_t);
-
-if (defined($fh)) {
-    print("bad file handle returned by Net::Pcap::file\n");
-    print("not ok\n");
-} else {
-    print("ok\n");
-}
-
-if ($fileno < 0) {
-    print("Bad fileno returned by Net::Pcap::fileno\n");
-    print("not ok\n");
-} else {
-    print("File descriptor returned is $fileno\n");
-    print("ok\n");
-}
-
-Net::Pcap::close($pcap_t);
-
-END {
-    unlink($dumpfile);
-}

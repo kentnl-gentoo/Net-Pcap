@@ -1,70 +1,95 @@
-#!/usr/bin/perl -w
-#
-# Test lookup functions
-#
-# $Id: 02-lookup.t,v 1.5 1999/05/05 02:11:54 tpot Exp $
-#
-
+#!/usr/bin/perl -T
 use strict;
-
-use ExtUtils::testlib;
+use Test::More;
+BEGIN { plan tests => 22 }
 use Net::Pcap;
 
-print("1..2\n");
+eval "use Test::Exception"; my $has_test_exception = !$@;
 
-my($dev, $net, $mask, $err);
+my($dev,$net,$mask,$result,$err) = ('','','','','');
+my @devs = ();
+my $ip_regexp = '/^[12]?\d+\.[12]?\d+\.[12]?\d+\.[12]?\d+$/';
 
-#
-# Test lookupdev() function
-#
 
-$dev = Net::Pcap::lookupdev(\$err);
+# Testing error messages
+SKIP: {
+    skip "Test::Exception not available", 8 unless $has_test_exception;
 
-if ($dev eq "") {
-    print("not ok\n");
-} else {
-    print("ok\n");
+    # lookupdev() errors
+    throws_ok(sub {
+        Net::Pcap::lookupdev()
+    }, '/^Usage: Net::Pcap::lookupdev\(err\)/', 
+       "calling lookupdev() with no argument");
+
+    throws_ok(sub {
+        Net::Pcap::lookupdev(undef)
+    }, '/^arg1 not a hash ref/', 
+       "calling lookupdev() with incorrect argument type");
+
+    # findalldevs() errors
+    throws_ok(sub {
+        Net::Pcap::findalldevs()
+    }, '/^Usage: Net::Pcap::findalldevs\(err\)/', 
+       "calling findalldevs() with no argument");
+
+    throws_ok(sub {
+        Net::Pcap::findalldevs(undef)
+    }, '/^arg1 not a reference/', 
+       "calling findalldevs() with incorrect argument type");
+
+    # lookupnet() errors
+    throws_ok(sub {
+        Net::Pcap::lookupnet()
+    }, '/^Usage: Net::Pcap::lookupnet\(device, net, mask, err\)/', 
+       "calling lookupnet() with no argument");
+
+    throws_ok(sub {
+        Net::Pcap::lookupnet('', undef, undef, undef)
+    }, '/^arg2 not a reference/', 
+       "calling lookupnet() with incorrect argument type for arg2");
+
+    throws_ok(sub {
+        Net::Pcap::lookupnet('', \$net, undef, undef)
+    }, '/^arg3 not a reference/', 
+       "calling lookupnet() with incorrect argument type for arg3");
+
+    throws_ok(sub {
+        Net::Pcap::lookupnet('', \$net, \$mask, undef)
+    }, '/^arg4 not a reference/', 
+       "calling lookupnet() with incorrect argument type for arg4");
 }
 
-if ($dev eq "") {
-    print("Net::Pcap::lookupdev returned error $err\n");
-    print("not ok\n");
-    exit;
-} else {
-    print("Net::Pcap::lookupdev returned device $dev\n");
-}
+# Testing lookupdev()
+eval { $dev = Net::Pcap::lookupdev(\$err) };
+is(   $@,   '', "lookupdev()" );
+is(   $err, '', " - \$err must be null: $err" ); $err = '';
+isnt( $dev, '', " - \$dev isn't null: '$dev'" );
 
-#
-# Test lookupnet() function
-#
+# Testing findalldevs()
+eval { @devs = Net::Pcap::findalldevs(\$err) };
+is(   $@,   '', "findalldevs()" );
+is(   $err, '', " - \$err must be null: $err" ); $err = '';
+ok( @devs >= 1, " - at least one device must be present in the list returned by findalldevs()" );
+my %devs = map { $_ => 1 } @devs;
+is( $devs{$dev}, 1, " - '$dev' must be present in the list returned by findalldevs()" );
 
-# From test.pl, Net-Pcap-0.01.tar.gz
+# Testing lookupnet()
+eval { $result = Net::Pcap::lookupnet($dev, \$net, \$mask, \$err) };
+is(   $@,    '', "lookupnet()" );
+is(   $err,  '', " - \$err must be null: $err" ); $err = '';
+is(  $result, 0, " - \$result must be null: $result" );
+isnt( $net,  '', " - \$net isn't null: '$net' => ".dotquad($net) );
+isnt( $mask, '', " - \$mask isn't null: '$mask' => ".dotquad($mask) );
+like( dotquad($net),  $ip_regexp, " - does \$net look like an IP address ?" );
+like( dotquad($mask), $ip_regexp, " - does \$mask look like an IP address ?" );
+
 
 sub dotquad {
     my($na, $nb, $nc, $nd);
-    my ( $net ) = @_ ;
-    $na=$net >> 24 & 255 ;
-    $nb=$net >> 16 & 255 ;
-    $nc=$net >>  8 & 255 ;
-    $nd=$net & 255 ;
-    return ( "$na.$nb.$nc.$nd") ;
-}
-
-my($result);
-
-$result = Net::Pcap::lookupnet($dev, \$net, \$mask, \$err);
-
-if ($result == -1) {
-    print("not ok\n");
-    print("Net::Pcap::lookupnet returned error $err\n");
-    exit;	  
-} else {
-    print("Net::Pcap::lookupnet returned net ", dotquad($net),
-	  " and mask ", dotquad($mask), "\n");
-}
-
-if (($net == 0) or ($mask == 0)) {
-    print("not ok\n");
-} else {
-    print("ok\n");
+    my($net) = @_ ;
+    $na = $net >> 24 & 255 ;
+    $nb = $net >> 16 & 255 ;
+    $nc = $net >>  8 & 255 ;
+    $nd = $net & 255 ;
+    return "$na.$nb.$nc.$nd"
 }

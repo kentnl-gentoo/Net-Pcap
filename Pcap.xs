@@ -89,7 +89,7 @@ pcap_lookupdev(err)
 			char *dev;
 
 			dev = pcap_lookupdev(errbuf);
-                        if (!strcmp(dev,"\\")) {
+			if (!strcmp(dev,"\\")) {
 				pcap_if_t *alldevs;
 				if (pcap_findalldevs(&alldevs, errbuf) == -1) {
      					sv_setpv(err_sv, errbuf);
@@ -168,8 +168,7 @@ pcap_open_live(device, snaplen, promisc, to_ms, err)
 			char *errbuf = safemalloc(PCAP_ERRBUF_SIZE);
 			SV *err_sv = SvRV(err);
 
-			RETVAL = pcap_open_live(device, snaplen, promisc,
-						to_ms, errbuf);
+			RETVAL = pcap_open_live(device, snaplen, promisc, to_ms, errbuf);
 
 			if (RETVAL == NULL) {
 				sv_setpv(err_sv, errbuf);
@@ -218,6 +217,53 @@ pcap_dump_open(p, fname)
 	char *fname
 
 int
+pcap_setnonblock(p, nb, err)
+	pcap_t *p
+	int nb
+	SV *err
+
+	CODE:
+		char *errbuf = safemalloc(PCAP_ERRBUF_SIZE);
+		SV *err_sv = SvRV(err);
+
+		RETVAL = pcap_setnonblock(p, nb, errbuf);
+
+		if (RETVAL == -1) {
+			sv_setpv(err_sv, errbuf);
+		} else {
+			err_sv = &PL_sv_undef;
+		}
+
+		safefree(errbuf);
+
+	OUTPUT:
+		err
+		RETVAL
+
+int
+pcap_getnonblock(p, err)
+  pcap_t *p
+  SV *err
+
+  CODE:
+    char *errbuf = safemalloc(PCAP_ERRBUF_SIZE);
+    SV *err_sv = SvRV(err);
+
+    RETVAL = pcap_getnonblock(p, errbuf);
+
+    if (RETVAL == -1) {
+        sv_setpv(err_sv, errbuf);
+    } else {
+        err_sv = &PL_sv_undef;
+    }
+
+    safefree(errbuf);
+
+  OUTPUT:
+    err
+    RETVAL
+
+int
 pcap_loop(p, cnt, callback, user)
 	pcap_t *p
 	int cnt
@@ -248,8 +294,7 @@ pcap_dispatch(p, cnt, callback, user)
 		callback_fn = newSVsv(callback);
 		user = newSVsv(user);
 
-		RETVAL = pcap_dispatch(p, cnt, callback_wrapper, 
-				       (u_char *)user);
+		RETVAL = pcap_dispatch(p, cnt, callback_wrapper, (u_char *)user);
 
 		SvREFCNT_dec(user);
 		SvREFCNT_dec(callback_fn);
@@ -321,6 +366,10 @@ pcap_setfilter(p, fp)
 	pcap_t *p
 	struct bpf_program *fp
 
+FILE *
+pcap_file(p)
+	pcap_t *p
+
 int
 pcap_fileno(p)
 	pcap_t *p
@@ -343,8 +392,8 @@ pcap_findalldevs(err)
 			if (pcap_findalldevs(&alldevs, errbuf) == -1) {
      				sv_setpv(err_sv, errbuf);
 	   	        } else {
-				for (d=alldevs;d;d=d->next) {
-				XPUSHs(sv_2mortal(newSVpv(d->name, 0)));
+					for (d=alldevs; d; d=d->next) {
+						XPUSHs(sv_2mortal(newSVpv(d->name, 0)));
 				}
 			}
 		} else
@@ -375,14 +424,11 @@ pcap_stats(p, ps)
 			hv_store(hv, "ps_ifdrop", strlen("ps_ifdrop"), 
 		                 newSViv(real_ps.ps_ifdrop), 0);
 
-		} else croak("arg 2 not a hash ref");
+		} else
+            croak("arg2 not a hash ref");
 
 	OUTPUT:
 		RETVAL
-
-FILE *
-pcap_file(p)
-	pcap_t *p
 
 void 
 pcap_dump(p, h, sp)
@@ -431,7 +477,8 @@ pcap_dump(p, h, sp)
 
 			pcap_dump((u_char *)p, &real_h, real_sp);
 		
-		} else croak("arg2 not a hash ref");
+		} else
+            croak("arg2 not a hash ref");
 
 SV *
 pcap_next(p, h)
@@ -466,7 +513,8 @@ pcap_next(p, h)
 			} else 
 				RETVAL = &PL_sv_undef;
 
-		} else croak("arg2 not a hash ref");	
+		} else
+            croak("arg2 not a hash ref");	
 
 	OUTPUT:
 	        h

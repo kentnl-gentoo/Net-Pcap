@@ -1,141 +1,161 @@
-#!/usr/bin/perl -w
-#
-# Test open_offline
-#
-# $Id: 06-offline.t,v 1.7 1999/05/05 02:11:56 tpot Exp $
-#
-
+#!/usr/bin/perl -T
 use strict;
-use English;
+use Socket;
+use Test::More;
+my $total;  # number of packets to process
+BEGIN {
+    $total = 10;
+    my $proto = getprotobyname('icmp');
 
-use ExtUtils::testlib;
+    if(socket(S, PF_INET, SOCK_RAW, $proto)) {
+        close(S);
+        plan tests => $total * 19 * 2 + 23
+    } else {
+        plan skip_all => "must be run as root"
+    }
+}
 use Net::Pcap;
 
-print("1..4\n");
+eval "use Test::Exception"; my $has_test_exception = !$@;
 
-my($pcap_t, $err);
-my $dumpfile = "/tmp/Net-Pcap-dump.$$";
+my($dev,$pcap,$dumper,$dump_file,$err) = ('','','','');
 
-# Must run as root
-
-if ($UID != 0 && $^O !~ /cygwin/i) {
-    print("not ok\n");
-    exit;
-}
-
-#
-# Test open_offline of bad file (not created yet)
-#
-
-$pcap_t = Net::Pcap::open_offline($dumpfile, \$err);
-
-if (defined($pcap_t)) {
-    print("Net::Pcap::open_offline worked for dummy file\n");
-    print("not ok\n");
-} else {
-    print("ok\n");
-}
-
-#
-# Test open_offline of good file.  Need to create it first.
-#
-
-my($dev, $pcap_dumper_t);
-
+# Find a device and open it
 $dev = Net::Pcap::lookupdev(\$err);
-$pcap_t = Net::Pcap::open_live($dev, 1024, 1, 0, \$err);
+$pcap = Net::Pcap::open_live($dev, 1024, 1, 0, \$err);
 
-if (!defined($pcap_t)) {
-    print("Net::Pcap::open_live returned error $err\n");
-    print("not ok\n");
-    exit;
+# Testing error messages
+SKIP: {
+    skip "Test::Exception not available", 2 unless $has_test_exception;
+
+    # dump_open() errors
+    throws_ok(sub {
+        Net::Pcap::open_offline()
+    }, '/^Usage: Net::Pcap::open_offline\(fname, err\)/', 
+       "calling open_offline() with no argument");
+
+    throws_ok(sub {
+        Net::Pcap::open_offline(undef, undef)
+    }, '/^arg2 not a reference/', 
+       "calling open_offline() with incorrect argument type for arg2");
+
 }
 
-$pcap_dumper_t = Net::Pcap::dump_open($pcap_t, $dumpfile);
+# Testing open_offline()
+eval q{ use File::Temp qw(:mktemp); $dump_file = mktemp('pcap-XXXXXX'); };
+$dump_file ||= "pcap-$$.dmp";
 
-if (!defined($pcap_dumper_t)) {
-    print("Net::Pcap::dump_open failed: ", Net::Pcap::geterr($pcap_t), "\n");
-    print("not ok\n");
-    exit;
-}
+# calling open_offline() with a non-existent file name
+eval { Net::Pcap::open_offline($dump_file, \$err) };
+is(   $@,   '', "open_offline() with non existent dump file" );
+isnt( $err, '', " - \$err is not null: $err" ); $err = '';
 
-sub process_pkt {
-    my($user, $hdr, $pkt) = @_;
+# creating a dump file
+$dumper = Net::Pcap::dump_open($pcap, $dump_file);
 
-    if (($user ne "xyz") or !defined($hdr) or !defined($pkt)) {
-	print("Bad args passed to callback\n");
-	print("Bad user data\n"), if ($user ne "xyz");
-	print("Bad pkthdr\n"), if (!defined($hdr));
-	print("Bad pkt data\n"), if (!defined($pkt));
-	print("not ok\n");
-	exit;
-    }
-
-    Net::Pcap::dump($pcap_dumper_t, $hdr, $pkt);
-}
-
-Net::Pcap::loop($pcap_t, 10, \&process_pkt, "xyz");
-Net::Pcap::close($pcap_t);
-
-Net::Pcap::dump_close($pcap_dumper_t);
-
-if (!-f $dumpfile) {
-    print("No save file created\n");
-    print("not ok\n");
-} else {
-    print("ok\n");
-}
-
-$pcap_t = Net::Pcap::open_offline($dumpfile, \$err);
-
-if (!defined($pcap_t)) {
-    print("Net::Pcap::open_offline failed: $err\n");
-    print("not ok\n");
-    exit;
-}
-
-my($major, $minor, $swapped);
-
-$major = Net::Pcap::major_version($pcap_t);
-$minor = Net::Pcap::minor_version($pcap_t);
-$swapped = Net::Pcap::is_swapped($pcap_t);
-
-print("File saved with libpcap version $major.$minor, swap is $swapped\n");
-
-if ($major == 0) {
-    print("suspicious libpcap major version\n");
-    print("not ok\n");
-} else {
-    print("ok\n");
-}
-
+my $user_text = "Net::Pcap test suite";
 my $count = 0;
+my @data1 = ();
 
-sub process_pkt2 {
-    my($user, $hdr, $pkt) = @_;
+sub store_packet {
+    my($user_data, $header, $packet) = @_;
 
-    if (($user ne "123") or !defined($hdr) or !defined($pkt)) {
-	print("Bad args passed to callback2\n");
-	print("Bad user data\n"), if ($user ne "123");
-	print("Bad pkthdr\n"), if (!defined($hdr));
-	print("Bad pkt data\n"), if (!defined($pkt));
-	print("not ok\n");
-	exit;
+    pass( "process_packet() callback" );
+    is( $user_data, $user_text, " - user data is the expected text" );
+    ok( defined $header,        " - header is defined" );
+    isa_ok( $header, 'HASH',    " - header" );
+
+    for my $field (qw(len caplen tv_sec tv_usec)) {
+        ok( exists $header->{$field}, "    - field '$field' is present" );
+        ok( defined $header->{$field}, "    - field '$field' is defined" );
+        like( $header->{$field}, '/^\d+$/', "    - field '$field' is a number" );
     }
 
-    print("Received packet of len $hdr->{len}\n");
+    ok( $header->{caplen} <= $header->{len}, "    - caplen <= len" );
+
+    ok( defined $packet,        " - packet is defined" );
+    is( length $packet, $header->{caplen}, " - packet has the advertised size" );
+
+    Net::Pcap::dump($dumper, $header, $packet);
+    push @data1, [$header, $packet];
     $count++;
 }
 
-Net::Pcap::loop($pcap_t, 10, \&process_pkt2, "123");
-Net::Pcap::close($pcap_t);
+Net::Pcap::loop($pcap, $total, \&store_packet, $user_text);
+is( $count, $total, "all packets processed" );
 
-if ($count != 10) {
-    print("not ok\n");
-} else {
-    print("ok\n");
+Net::Pcap::dump_close($dumper);
+
+# now opening this dump file
+eval { $pcap = Net::Pcap::open_offline($dump_file, \$err) };
+is(   $@,   '', "open_offline() with existent dump file" );
+is(   $err, '', " - \$err must be null: $err" ); $err = '';
+ok( defined $pcap, " - \$pcap is defined" );
+isa_ok( $pcap, 'SCALAR', " - \$pcap" );
+isa_ok( $pcap, 'pcap_tPtr', " - \$pcap" );
+
+my($major, $minor, $swapped);
+
+eval { $major = Net::Pcap::major_version($pcap) };
+is(   $@,   '', "major_version()" );
+like( $major, '/^\d+$/', " - major is a number: $major" );
+
+eval { $minor = Net::Pcap::minor_version($pcap) };
+is(   $@,   '', "minor_version()" );
+like( $minor, '/^\d+$/', " - minor is a number: $minor" );
+
+eval { $swapped = Net::Pcap::is_swapped($pcap) };
+is(   $@,   '', "is_swapped()" );
+like( $swapped, '/^[01]$/', " - swapped is 0 or 1: $swapped" );
+
+$count = 0;
+my @data2 = ();
+
+sub read_packet {
+    my($user_data, $header, $packet) = @_;
+
+    pass( "process_packet() callback" );
+    is( $user_data, $user_text, " - user data is the expected text" );
+    ok( defined $header,        " - header is defined" );
+    isa_ok( $header, 'HASH',    " - header" );
+
+    for my $field (qw(len caplen tv_sec tv_usec)) {
+        ok( exists $header->{$field}, "    - field '$field' is present" );
+        ok( defined $header->{$field}, "    - field '$field' is defined" );
+        like( $header->{$field}, '/^\d+$/', "    - field '$field' is a number" );
+    }
+
+    ok( $header->{caplen} <= $header->{len}, "    - caplen <= len" );
+
+    ok( defined $packet,        " - packet is defined" );
+    is( length $packet, $header->{caplen}, " - packet has the advertised size" );
+
+    push @data2, [$header, $packet];
+    $count++;
 }
 
-END {
-    unlink($dumpfile);
-}
+Net::Pcap::loop($pcap, $total, \&read_packet, $user_text);
+is( $count, $total, "all packets processed" );
+
+is_deeply( \@data1, \@data2, "checking data" );
+#eval "use Test::Deep";      my $has_test_deep = !$@;
+#SKIP: {
+#    skip "Test::Deep not available", 1 unless $has_test_deep;
+#    cmp_deeply( \@data1, \@data2, "checking data" );
+#}
+
+Net::Pcap::close($pcap);
+unlink($dump_file);
+
+
+# Testing open_offline() using known samples
+$dump_file = File::Spec->catfile(qw(t samples ping-ietf-20pk-be.dmp));
+eval { $pcap = Net::Pcap::open_offline($dump_file, \$err) };
+is(   $@,   '', "open_offline() with existent dump file" );
+is(   $err, '', " - \$err must be null: $err" ); $err = '';
+ok( defined $pcap, " - \$pcap is defined" );
+isa_ok( $pcap, 'SCALAR', " - \$pcap" );
+isa_ok( $pcap, 'pcap_tPtr', " - \$pcap" );
+
+Net::Pcap::close($pcap);
+

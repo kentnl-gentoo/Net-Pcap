@@ -1,6 +1,7 @@
-Most of these tests are required to be run as root.
-(Addendum by Marco Carnut: the root user check is disabled when
-running on Cygwin with winpcap)
+Most of these tests need to bypass the TCP/IP stack in order to directly 
+open the network interface, which generally requires administrative 
+privileges or appropriate access rights. The tests are skipped if the 
+user account running these does not have the required rights. 
 
 Note that some of these tests require a working network interface with
 actual traffic on it.  For example the loop test waits for 10 packets

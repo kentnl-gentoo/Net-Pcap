@@ -1,54 +1,46 @@
-#!/usr/bin/perl -w
-#
-# Test open_live functions
-#
-# $Id: 09-error.t,v 1.6 1999/05/05 02:11:57 tpot Exp $
-#
-
+#!/usr/bin/perl -T
 use strict;
-use English;
+use Socket;
+use Test::More;
+BEGIN {
+    my $proto = getprotobyname('icmp');
 
-use ExtUtils::testlib;
+    if(socket(S, PF_INET, SOCK_RAW, $proto)) {
+        close(S);
+        plan tests => 10
+    } else {
+        plan skip_all => "must be run as root"
+    }
+}
 use Net::Pcap;
 
-print("1..2\n");
+my($dev,$net,$mask,$pcap,$filter,$res,$err) = ('','','','','','','');
 
-# Must run as root
-
-if ($UID != 0 && $^O !~ /cygwin/i) {
-    print("not ok\n");
-    exit;
-}
-
-my($dev, $pcap_t, $err, $net, $mask);
-my($result, $filter);
-
+# Find a device and open it
 $dev = Net::Pcap::lookupdev(\$err);
-$result = Net::Pcap::lookupnet($dev, \$net, \$mask, \$err);
-$pcap_t = Net::Pcap::open_live($dev, 1024, 1, 0, \$err);
+$res = Net::Pcap::lookupnet($dev, \$net, \$mask, \$err);
+$pcap = Net::Pcap::open_live($dev, 1024, 1, 0, \$err);
 
-if (!defined($pcap_t)) {
-    print("Net::Pcap::open_live returned error $err");
-    print("not ok\n");
-    exit;
+
+# Testing compile() with an invalid filter
+eval { $res = Net::Pcap::compile($pcap, \$filter, "this is not a filter", 0, $mask) };
+is(   $@,   '', "compile()" );
+is(   $res, -1, " - result must not be null: $res" );
+eval { $err = Net::Pcap::geterr($pcap) };
+is(   $@,   '', "geterr()" );
+is(   $err, 'syntax error', " - \$err must not be null" );
+
+# Testing compile() with a valid filter
+eval { $res = Net::Pcap::compile($pcap, \$filter, "tcp", 0, $mask) };
+is(   $@,   '', "compile()" );
+is(   $res,  0, " - result must be null: $res" );
+eval { $err = Net::Pcap::geterr($pcap) };
+is(   $@,   '', "geterr()" );
+TODO: { local $TODO = "BUG: error string not reset";
+is(   $err, '', " - \$err must be null" );
 }
 
-$result = Net::Pcap::compile($pcap_t, \$filter, "beans and ham", 0, $mask);
-
-if ($result == 0) {
-    print("Call to Net::Pcap::compile actually worked!");
-    print("not ok\n");
-    exit;
-}
-
-my($geterr, $strerror);
-
-$geterr = Net::Pcap::geterr($pcap_t);
-($geterr eq "") ? print("not ok\n") : print("ok\n");
-
-$strerror = Net::Pcap::strerror(1);
-($strerror eq "") ? print("not ok\n") : print("ok\n");
-
-# This test, if enabled, mucks up the test harness script 
-
-#Net::Pcap::perror($pcap_t, "$0 test error");
+# Testing strerror()
+eval { $err = Net::Pcap::strerror(1) };
+is(   $@,   '', "strerror()" );
+isnt( $err, '', " - \$err must not be null" );

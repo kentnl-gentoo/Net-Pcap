@@ -1,57 +1,71 @@
-#!/usr/bin/perl -w
-#
-# Test open_live functions
-#
-# $Id: 03-openlive.t,v 1.5 1999/05/05 02:11:55 tpot Exp $
-#
-
+#!/usr/bin/perl -T
 use strict;
-use English;
+use Socket;
+use Test::More;
+BEGIN {
+    my $proto = getprotobyname('icmp');
 
-use ExtUtils::testlib;
+    if(socket(S, PF_INET, SOCK_RAW, $proto)) {
+        close(S);
+        plan tests => 14
+    } else {
+        plan skip_all => "must be run as root"
+    }
+}
 use Net::Pcap;
 
-print("1..3\n");
+eval "use Test::Exception"; my $has_test_exception = !$@;
 
-# Must run as root
+my($dev,$pcap,$err) = ('','','');
 
-if ($UID != 0 && $^O !~ /cygwin/i) {
-    print("not ok\n");
-    exit;
+
+# Testing error messages
+SKIP: {
+    skip "Test::Exception not available", 4 unless $has_test_exception;
+
+    # open_live() errors
+    throws_ok(sub {
+        Net::Pcap::open_live()
+    }, '/^Usage: Net::Pcap::open_live\(device, snaplen, promisc, to_ms, err\)/', 
+       "calling open_live() with no argument");
+
+    throws_ok(sub {
+        Net::Pcap::open_live(0, 0, 0, 0, undef)
+    }, '/^arg5 not a reference/', 
+       "calling open_live() with no reference for arg5");
+
+    # close() errors
+    throws_ok(sub {
+        Net::Pcap::close()
+    }, '/^Usage: Net::Pcap::close\(p\)/', 
+       "calling close() with no argument");
+
+    throws_ok(sub {
+        Net::Pcap::close(undef)
+    }, '/^p is not of type pcap_tPtr/', 
+       "calling close() with incorrect argument type");
+
 }
 
-my($dev, $pcap_t, $err);
-
-#
-# Test open_live function
-#
-
+# Find a device
 $dev = Net::Pcap::lookupdev(\$err);
-$pcap_t = Net::Pcap::open_live($dev, 1024, 1, 0, \$err);
 
-if (!defined($pcap_t)) {
-    print("Net::Pcap::open_live returned error $err\n");
-    print("not ok\n");
-    exit;
-}
+# Testing open_live()
+eval { $pcap = Net::Pcap::open_live($dev, 1024, 1, 0, \$err) };
+is(   $@,   '', "open_live()" );
+is(   $err, '', " - \$err must be null: $err" ); $err = '';
+ok( defined $pcap, " - \$pcap is defined" );
+isa_ok( $pcap, 'SCALAR', " - \$pcap" );
+isa_ok( $pcap, 'pcap_tPtr', " - \$pcap" );
 
-print("ok\n");
+# Testing close()
+eval { Net::Pcap::close($pcap) };
+is(   $@,   '', "close()" );
+is(   $err, '', " - \$err must be null: $err" ); $err = '';
 
-#
-# Test close function
-#
+# Testing open_live() with fake device name
+eval { $pcap = Net::Pcap::open_live('this is not a device', 1024, 1, 0, \$err) };
+is(   $@,   '', "open_live()" );
+like( $err, '/^ioctl: (?:No such device)/', " - \$err must be set: $err" ); $err = '';
+is( $pcap, undef, " - \$pcap isn't defined" );
 
-Net::Pcap::close($pcap_t);
-print("ok\n");
-
-#
-# Test open_live() with dodgy device
-#
-
-$pcap_t = Net::Pcap::open_live("beans", 1024, 1, 0, \$err);
-
-if (defined($pcap_t)) {
-    print("not ok\n");
-} else {
-    print("ok\n");
-}

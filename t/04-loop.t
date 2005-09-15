@@ -1,67 +1,77 @@
-#!/usr/bin/perl -w
-#
-# Test loop function
-#
-# $Id: 04-loop.t,v 1.6 1999/05/05 02:11:55 tpot Exp $
-#
-
+#!/usr/bin/perl -T
 use strict;
-use English;
+use Socket;
+use Test::More;
+my $total;  # number of packets to process
+BEGIN {
+    $total = 10;
+    my $proto = getprotobyname('icmp');
 
-use ExtUtils::testlib;
+    if(socket(S, PF_INET, SOCK_RAW, $proto)) {
+        close(S);
+        plan tests => $total * 19 + 5
+    } else {
+        plan skip_all => "must be run as root"
+    }
+}
 use Net::Pcap;
 
-print("1..1\n");
+eval "use Test::Exception"; my $has_test_exception = !$@;
 
-# Must run as root
+my($dev,$pcap,$err) = ('','','');
 
-if ($UID != 0 && $^O !~ /cygwin/i) {
-    print("must run as root!\n");
-    print("not ok\n");
-    exit;
-}
-
-my($dev, $pcap_t, $err);
-
-#
-# Test loop on open_live interface
-#
-
+# Find a device and open it
 $dev = Net::Pcap::lookupdev(\$err);
-$pcap_t = Net::Pcap::open_live($dev, 1024, 1, 0, \$err);
+$pcap = Net::Pcap::open_live($dev, 1024, 1, 0, \$err);
 
-if (!defined($pcap_t)) {
-    print("Net::Pcap::open_live returned error $err\n");
-    print("not ok\n");
-    exit;
+# Testing error messages
+SKIP: {
+    skip "Test::Exception not available", 2 unless $has_test_exception;
+
+    # loop() errors
+    throws_ok(sub {
+        Net::Pcap::loop()
+    }, '/^Usage: Net::Pcap::loop\(p, cnt, callback, user\)/', 
+       "calling loop() with no argument");
+
+    throws_ok(sub {
+        Net::Pcap::loop(undef, 0, 0, 0)
+    }, '/^p is not of type pcap_tPtr/', 
+       "calling loop() with incorrect argument type");
+
 }
 
+# Testing loop()
+my $user_text = "Net::Pcap test suite";
 my $count = 0;
 
-sub process_pkt {
-    my($user, $hdr, $pkt) = @_;
+sub process_packet {
+    my($user_data, $header, $packet) = @_;
 
-    if (($user ne "abc") or !defined($hdr) or !defined($pkt)) {
-	print("Bad args passed to callback\n");
-	print("Bad user data\n"), if ($user ne "abc");
-	print("Bad pkthdr\n"), if (!defined($hdr));
-	print("Bad pkt data\n"), if (!defined($pkt));
-	print("not ok\n");
-	exit;
+    pass( "process_packet() callback" );
+    is( $user_data, $user_text, " - user data is the expected text" );
+    ok( defined $header,        " - header is defined" );
+    isa_ok( $header, 'HASH',    " - header" );
+
+    for my $field (qw(len caplen tv_sec tv_usec)) {
+        ok( exists $header->{$field}, "    - field '$field' is present" );
+        ok( defined $header->{$field}, "    - field '$field' is defined" );
+        like( $header->{$field}, '/^\d+$/', "    - field '$field' is a number" );
     }
 
-    print("Received packet of len $hdr->{len}\n");
+    ok( $header->{caplen} <= $header->{len}, "    - coherency check: packet length (caplen <= len)" );
+
+    ok( defined $packet,        " - packet is defined" );
+    is( length $packet, $header->{caplen}, " - packet has the advertised size" );
+
     $count++;
 }
 
-Net::Pcap::loop($pcap_t, 10, \&process_pkt, "abc");
+my $retval = 0;
+eval { $retval = Net::Pcap::loop($pcap, $total, \&process_packet, $user_text) };
+is(   $@,   '', "loop()" );
+is( $count, $total, "all packets processed" );
+is( $retval, 0, "checking return value" );
 
-if ($count != 10) {
-    print("Bad pkt count\n");
-    print("not ok\n");
-    exit;
-}
+Net::Pcap::close($pcap);
 
-Net::Pcap::close($pcap_t);
-
-print("ok\n");

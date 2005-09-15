@@ -1,56 +1,71 @@
-#!/usr/bin/perl -w
-#
-# Test dispatch function
-#
-# $Id: 13-dispatch.t,v 1.4 1999/05/05 02:11:58 tpot Exp $
-#
-
+#!/usr/bin/perl -T
 use strict;
-use English;
+use Socket;
+use Test::More;
+my $total;  # number of packets to process
+BEGIN {
+    $total = 10;
+    my $proto = getprotobyname('icmp');
 
-use ExtUtils::testlib;
+    if(socket(S, PF_INET, SOCK_RAW, $proto)) {
+        close(S);
+        plan tests => 1 * 11 + 5
+    } else {
+        plan skip_all => "must be run as root"
+    }
+}
 use Net::Pcap;
 
-print("1..1\n");
+eval "use Test::Exception"; my $has_test_exception = !$@;
 
-# Must run as root
+my($dev,$pcap,$dumper,$dump_file,$err) = ('','','','');
 
-if ($UID != 0 && $^O !~ /cygwin/i) {
-    print("not ok\n");
-    exit;
-}
-
-my($dev, $pcap_t, $err);
-
-#
-# Test loop on open_live interface
-#
-
+# Find a device and open it
 $dev = Net::Pcap::lookupdev(\$err);
-$pcap_t = Net::Pcap::open_live($dev, 1024, 1, 1, \$err);
+$pcap = Net::Pcap::open_live($dev, 1024, 1, 0, \$err);
 
-if (!defined($pcap_t)) {
-    print("Net::Pcap::open_live returned error $err\n");
-    print("not ok\n");
-    exit;
+# Testing error messages
+SKIP: {
+    skip "Test::Exception not available", 2 unless $has_test_exception;
+
+    # dispatch() errors
+    throws_ok(sub {
+        Net::Pcap::dispatch()
+    }, '/^Usage: Net::Pcap::dispatch\(p, cnt, callback, user\)/', 
+       "calling dispatch() with no argument");
+
+    throws_ok(sub {
+        Net::Pcap::dispatch(undef, undef, undef, undef)
+    }, '/^p is not of type pcap_tPtr/', 
+       "calling dispatch() with incorrect argument type");
+
 }
 
-sub process_pkt {
-    my($user, $hdr, $pkt) = @_;
+my $user_text = "Net::Pcap test suite";
+my $count = 0;
 
-    if (($user ne "abc") or !defined($hdr) or !defined($pkt)) {
-	print("Bad args passed to callback\n");
-	print("Bad user data\n"), if ($user ne "abc");
-	print("Bad pkthdr\n"), if (!defined($hdr));
-	print("Bad pkt data\n"), if (!defined($pkt));
-	print("not ok\n");
-	exit;
+sub process_packet {
+    my($user_data, $header, $packet) = @_;
+    my %stats = ();
+
+    eval { Net::Pcap::stats($pcap, \%stats) };
+    is(   $@,   '', "stats()" );
+    is( keys %stats, 3, " - %stats has 3 elements" );
+
+    for my $field (qw(ps_recv ps_drop ps_ifdrop)) {
+        ok( exists $stats{$field}, "    - field '$field' is present" );
+        ok( defined $stats{$field}, "    - field '$field' is defined" );
+        like( $stats{$field}, '/^\d+$/', "    - field '$field' is a number" );
     }
 
-    print("Received packet of len $hdr->{len}\n");
+    $count++;
 }
 
-Net::Pcap::dispatch($pcap_t, 10, \&process_pkt, "abc");
-Net::Pcap::close($pcap_t);
+my $retval = 0;
+eval { $retval = Net::Pcap::dispatch($pcap, 10, \&process_packet, $user_text) };
+is(   $@,   '', "dispatch()" );
+is( $count, 1, "one packet processed" );
+is( $retval, $count, "checking return value" );
 
-print("ok\n");
+Net::Pcap::close($pcap);
+

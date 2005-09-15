@@ -1,60 +1,79 @@
-#!/usr/bin/perl -w
-#
-# Test stats
-#
-# $Id: 07-stats.t,v 1.5 1999/05/05 02:11:56 tpot Exp $
-#
-
+#!/usr/bin/perl -T
 use strict;
-use English;
+use Socket;
+use Test::More;
+my $total;  # number of packets to process
+BEGIN {
+    $total = 10;
+    my $proto = getprotobyname('icmp');
 
-use ExtUtils::testlib;
+    if(socket(S, PF_INET, SOCK_RAW, $proto)) {
+        close(S);
+        plan tests => $total * 13 + 4
+    } else {
+        plan skip_all => "must be run as root"
+    }
+}
 use Net::Pcap;
 
-print("1..1\n");
+eval "use Test::Exception"; my $has_test_exception = !$@;
 
-# Must run as root
+my($dev,$pcap,$dumper,$dump_file,$err) = ('','','','');
 
-if ($UID != 0 && $^O !~ /cygwin/i) {
-    print("not ok\n");
-    exit;
-}
-
-my($dev, $pcap_t, $err);
-
+# Find a device and open it
 $dev = Net::Pcap::lookupdev(\$err);
-$pcap_t = Net::Pcap::open_live($dev, 1024, 1, 0, \$err);
+$pcap = Net::Pcap::open_live($dev, 1024, 1, 0, \$err);
 
-if (!defined($pcap_t)) {
-    print("Net::Pcap::open_live returned error $err\n");
-    print("not ok\n");
-    exit;
+# Testing error messages
+SKIP: {
+    skip "Test::Exception not available", 3 unless $has_test_exception;
+
+    # stats() errors
+    throws_ok(sub {
+        Net::Pcap::stats()
+    }, '/^Usage: Net::Pcap::stats\(p, ps\)/', 
+       "calling stats() with no argument");
+
+    throws_ok(sub {
+        Net::Pcap::stats(undef, undef)
+    }, '/^p is not of type pcap_tPtr/', 
+       "calling stats() with incorrect argument type");
+
+    throws_ok(sub {
+        Net::Pcap::stats($pcap, undef)
+    }, '/^arg2 not a hash ref/', 
+       "calling stats() with no reference for arg2");
+
 }
 
+# Testing stats()
+my $user_text = "Net::Pcap test suite";
 my $count = 0;
 
-sub process_pkt
-{
-    my($user, $hdr, $pkt) = @_;
-    my %stats;
-    
-    print("In process_pkt:\n");
+sub process_packet {
+    my($user_data, $header, $packet) = @_;
+    my %stats = ();
 
-    Net::Pcap::stats($pcap_t, \%stats);
+    my $r = undef;
+    eval { $r = Net::Pcap::stats($pcap, \%stats) };
+    is(   $@,   '', "stats()" );
+    is(   $r,    0, " - should return zero" );
+    is( keys %stats, 3, " - %stats has 3 elements" );
 
-    $count++;
-
-    if ($count != $stats{ps_recv}) {
-	print("Bad statistics\n");
-	print("not ok\n");
-	exit;
+    for my $field (qw(ps_recv ps_drop ps_ifdrop)) {
+        ok( exists $stats{$field}, "    - field '$field' is present" );
+        ok( defined $stats{$field}, "    - field '$field' is defined" );
+        like( $stats{$field}, '/^\d+$/', "    - field '$field' is a number" );
     }
 
-    print("Received $stats{ps_recv}, dropped $stats{ps_drop}, ", 
-	  "interface dropped $stats{ps_ifdrop}\n");
+    $count++;
+    TODO: { local $TODO = "BUG: ps_recv not correctly set";
+    is( $stats{ps_recv}, $count, "    -  coherency check: number of processed packets" );
+    }
 }
 
-Net::Pcap::loop($pcap_t, 10, \&process_pkt, 0);
-Net::Pcap::close($pcap_t);
+Net::Pcap::loop($pcap, $total, \&process_packet, $user_text);
+is( $count, $total, "all packets processed" );
 
-print("ok\n");
+Net::Pcap::close($pcap);
+

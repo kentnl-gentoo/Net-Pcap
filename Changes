@@ -1,0 +1,39 @@
+Revision history for Net-Pcap
+
+2005.09.15 - 0.06 - Sebastien Aperghis-Tramoni
+  - [FEATURE] RT#7594: added pcap_setnonblock() and pcap_getnonblock(). Thanks 
+    to Ernesto Domat for the patch.
+  - [FEATURE] Changed the warning returned by stats() in order to be uniform 
+    with other similar warnings
+  - [TESTS] Completely rewrote the tests suite using Test::More and better 
+    (and portable) methods to skip tests when appropriate. 
+  - [TESTS] Added t/podcover.t, t/pod.t, t/portfs.t
+  - [TESTS] Added t/15-is_swapped.t, t/16-setnonblock.t
+  - [DIST] Updated Makefile.PL
+  - [DOC] RT#7671: documentation typo
+  - [DOC] Updated the documentation.
+
+2003.06.16 - 0.05 - Marco Carnut
+  - includes fixes for Cygwin and WinPcap (see http://winpcap.polito.it/
+    and install the SDK)
+  - findalldevs() wrapper available
+  - lookupdev() returns the first item from findalldevs()
+  - test now pass under Cygwin by disabling the root user check
+
+2000.05.17 - 0.04 - Tim Potter
+  - now compiles and works with Perl 5.6.0
+
+1999.03.24 - 0.03 - Tim Potter
+  - complete rewrite using XS
+  - all pcap library functions fully implemented
+  - packet header and statistical information passed as Perl hashes
+  - added Pod documentation
+
+1998.12.06 - 0.02 - Bo Adler
+  - update to make it work with libpcap 0.4
+  - fixed problem in stats() method call
+  - changed the arguments of the loop()/dispatch() callback to include 
+    the pcap_hdr struct
+
+1997.08.27 - 0.01 - Peter Lister
+  - initial implementation using SWIG
