@@ -4,27 +4,86 @@
 # An interface to the LBL pcap(3) library.  This module simply
 # bootstraps the extensions defined in Pcap.xs
 #
-# Copyright (c) 2005 Sebastien Aperghis-Tramoni. All rights reserved.
-# Copyright (c) 2003 Marco Carnut. All rights reserved. 
-# Copyright (c) 1999-2000 Tim Potter. All rights reserved. 
-# Copyright (c) 1998 Bo Adler. All rights reserved. 
-# Copyright (c) 1997 Peter Lister. All rights reserved. 
+# Copyright (C) 2005 Sebastien Aperghis-Tramoni. All rights reserved.
+# Copyright (C) 2003 Marco Carnut. All rights reserved. 
+# Copyright (C) 1999-2000 Tim Potter. All rights reserved. 
+# Copyright (C) 1998 Bo Adler. All rights reserved. 
+# Copyright (C) 1997 Peter Lister. All rights reserved. 
 # 
 # This program is free software; you can redistribute it and/or modify 
 # it under the same terms as Perl itself.
 #
-
 package Net::Pcap;
-
+use strict;
 require Exporter;
 require DynaLoader;
+use AutoLoader;
+use Carp;
 
-@ISA = qw(Exporter DynaLoader);
-@EXPORT = qw();
+{   no strict;
+    $VERSION = '0.07';
 
-$VERSION = '0.06';
+    @ISA = qw(Exporter DynaLoader);
 
-bootstrap Net::Pcap $VERSION;
+    %EXPORT_TAGS = (
+        'bpf' => [qw(
+            BPF_ALIGNMENT  BPF_MAJOR_VERSION  BPF_MAXBUFSIZE  BPF_MAXINSNS
+            BPF_MEMWORDS  BPF_MINBUFSIZE  BPF_MINOR_VERSION  BPF_RELEASE
+        )], 
+        'datalink' => [qw(
+            DLT_AIRONET_HEADER  DLT_APPLE_IP_OVER_IEEE1394  DLT_ARCNET
+            DLT_ARCNET_LINUX  DLT_ATM_CLIP  DLT_ATM_RFC1483  DLT_AURORA  DLT_AX25
+            DLT_CHAOS  DLT_CHDLC  DLT_CISCO_IOS  DLT_C_HDLC  DLT_DOCSIS  DLT_ECONET
+            DLT_EN10MB  DLT_EN3MB  DLT_ENC  DLT_FDDI  DLT_FRELAY  DLT_HHDLC
+            DLT_IBM_SN  DLT_IBM_SP  DLT_IEEE802  DLT_IEEE802_11  DLT_IEEE802_11_RADIO
+            DLT_IEEE802_11_RADIO_AVS  DLT_IPFILTER  DLT_IP_OVER_FC  DLT_JUNIPER_ATM1
+            DLT_JUNIPER_ATM2  DLT_JUNIPER_ES  DLT_JUNIPER_GGSN  DLT_JUNIPER_MFR
+            DLT_JUNIPER_MLFR  DLT_JUNIPER_MLPPP  DLT_JUNIPER_MONITOR  DLT_JUNIPER_SERVICES
+            DLT_LINUX_IRDA  DLT_LINUX_SLL  DLT_LOOP  DLT_LTALK  DLT_NULL  DLT_OLD_PFLOG
+            DLT_PCI_EXP  DLT_PFLOG  DLT_PFSYNC  DLT_PPP  DLT_PPP_BSDOS  DLT_PPP_ETHER
+            DLT_PPP_SERIAL  DLT_PRISM_HEADER  DLT_PRONET  DLT_RAW  DLT_RIO  DLT_SLIP
+            DLT_SLIP_BSDOS  DLT_SUNATM  DLT_SYMANTEC_FIREWALL  DLT_TZSP  DLT_USER0
+            DLT_USER1  DLT_USER2  DLT_USER3  DLT_USER4  DLT_USER5  DLT_USER6  DLT_USER7
+            DLT_USER8  DLT_USER9  DLT_USER10  DLT_USER11  DLT_USER12  DLT_USER13
+            DLT_USER14  DLT_USER15
+        )], 
+        pcap => [qw(
+            MODE_CAPT  MODE_MON  MODE_STAT
+            PCAP_ERRBUF_SIZE    PCAP_IF_LOOPBACK
+            PCAP_VERSION_MAJOR  PCAP_VERSION_MINOR
+        )], 
+    );
+  
+    @EXPORT = (
+        @{$EXPORT_TAGS{pcap}}, 
+        @{$EXPORT_TAGS{datalink}}, 
+        @{$EXPORT_TAGS{bpf}}, 
+    );
+
+    bootstrap Net::Pcap $VERSION;
+}
+
+sub AUTOLOAD {
+    # This AUTOLOAD is used to 'autoload' constants from the constant()
+    # XS function.
+
+    no strict;
+    my $constname;
+    ($constname = $AUTOLOAD) =~ s/.*:://;
+    croak "&Net::Pcap::constant not defined" if $constname eq 'constant';
+    my ($error, $val) = constant($constname);
+    if ($error) { croak $error; }
+
+    {   no strict 'refs';
+	# Fixed between 5.005_53 and 5.005_61
+#XXX    if ($] >= 5.00561) {
+#XXX        *$AUTOLOAD = sub () { $val };
+#XXX    } else {
+	    *$AUTOLOAD = sub { $val };
+#XXX    }
+    }
+    goto &$AUTOLOAD;
+}
 
 1;
 
@@ -38,7 +97,7 @@ Net::Pcap - Interface to pcap(3) LBL packet capture library
 
 =head1 VERSION
 
-Version 0.06
+Version 0.07
 
 =head1 SYNOPSIS
 
@@ -88,14 +147,22 @@ compatibility with previous versions of B<Net::Pcap>.
 =item B<Net::Pcap::lookupdev(\$err)>
 
 Returns the name of a network device that can be used with
-B<Net::Pcap::open_live() function>.  On error, the C<$err> parameter is
-filled with an appropriate error message else it is undefined.
+B<Net::Pcap::open_live() function>.  On error, the C<$err> parameter 
+is filled with an appropriate error message else it is undefined.
+
+B<Example>
+
+    $dev = Net::Pcap::lookupdev();
 
 =item B<Net::Pcap::findalldevs(\$err)>
 
 Returns a list of all network device names that can be used with
-B<Net::Pcap::open_live() function>.  On error, the C<$err> parameter is
-filled with an appropriate error message else it is undefined.
+B<Net::Pcap::open_live() function>.  On error, the C<$err> parameter 
+is filled with an appropriate error message else it is undefined.
+
+B<Example>
+
+    @devs = Net::Pcap::findalldevs(\$err);
 
 =item B<Net::Pcap::lookupnet($dev, \$net, \$mask, \$err)>
 
@@ -121,11 +188,42 @@ parameter specifies a read timeout in milliseconds.  The packet descriptor
 will be undefined if an error occurs, and the C<$err> parameter will be 
 set with an appropriate error message.
 
+B<Example>
+
+    $dev = Net::Pcap::lookupdev();
+    $pcap = Net::Pcap::open_live($dev, 1024, 1, \$err)
+        or die "Can't open device $dev: $err\n";
+
+=item B<Net::Pcap::open_dead($linktype, $snaplen)>
+
+Creates and returns a new packet descriptor to use when calling the other 
+functions in C<libpcap>. It is typically used when just using C<libpcap> 
+for compiling BPF code. 
+
+B<Example>
+
+    $pcap = Net::Pcap::open_dead(0, 1024);
+
+=item B<Net::Pcap::open_offline($filename, \$err)>
+
+Return a packet capture descriptor to read from a previously created
+"savefile".  The returned descriptor is undefined if there was an
+error and in this case the C<$err> parameter will be filled.  Savefiles
+are created using the C<Net::Pcap::dump_*> commands.
+
+B<Example>
+
+    $pcap = Net::Pcap::open_offline($dump, \$err)
+        or die "Can't read '$dump': $err\n";
+
 =item B<Net::Pcap::loop($pcap, $count, \&callback, $user_data)>
 
 Read C<$cnt> packets from the packet capture descriptor C<$pcap> and call
-the perl function C<&callback> with an argument of C<$user_data>.  If C<$count> 
-is negative, then the function loops forever or until an error occurs.
+the perl function C<&callback> with an argument of C<$user_data>.  
+If C<$count> is negative, then the function loops forever or until an error 
+occurs. Returns 0 if C<$count> is exhausted, -1 on error, and -2 if the 
+loop terminated due to a call to pcap_breakloop() before any packets were 
+processed. 
 
 The callback function is also passed packet header information and
 packet data like so:
@@ -160,12 +258,27 @@ Microseconds value of the packet timestamp.
 
 =back
 
-=item B<Net::Pcap::open_offline($filename, \$err)>
+B<Example>
 
-Return a packet capture descriptor to read from a previously created
-"savefile".  The returned descriptor is undefined if there was an
-error and in this case the C<$err> parameter will be filled.  Savefiles
-are created using the C<Net::Pcap::dump_*> commands.
+    Net::Pcap::loop($pcap, 10, \&process_packet, "user data");
+
+    sub process_packet {
+        my($user_data, $header, $packet) = @_;
+        # ...
+    }
+
+=item B<Net::Pcap::breakloop($pcap)>
+
+Sets a flag  that will force C<Net::Pcap::dispatch()> or C<Net::Pcap::loop()> 
+to return rather than looping; they will return the number of packets that 
+have been processed so far, or -2 if no packets have been processed so far. 
+
+This routine is safe to use inside a signal handler on UNIX or a console 
+control handler on Windows, as it merely sets a flag that is checked within 
+the loop. 
+
+Please see the section on C<pcap_breakloop()> in L<pcap(3)> for more 
+information. 
 
 =item B<Net::Pcap::close($pcap)>
 
@@ -248,7 +361,42 @@ Close the savefile associated with descriptor C<$pcap_dumper_t>.
 
 =item B<Net::Pcap::datalink($pcap)>
 
-Returns the link layer type associated with the currently open device.
+Returns the link layer type associated with the given pcap descriptor.
+
+B<Example>
+
+    $linktype = Net::Pcap::datalink($pcap);
+
+=item B<Net::Pcap::set_datalink($pcap, $linktype)>
+
+Sets the data link type of the given pcap descriptor to the type specified 
+by C<$linktype>. Returns -1 on failure. 
+
+=item B<Net::Pcap::datalink_name_to_val($name)>
+
+Translates a data link type name, which is a C<DLT_> name with the C<DLT_> 
+part removed, to the corresponding data link type value. The translation is 
+case-insensitive. Returns -1 on failure. 
+
+B<Example>
+
+    $linktype = Net::Pcap::datalink_name_to_val('LTalk');  # returns DLT_LTALK
+
+=item B<Net::Pcap::datalink_val_to_name($linktype)>
+
+Translates a data link type value to the corresponding data link type name. 
+
+B<Example>
+
+    $name = Net::Pcap::datalink_val_to_name(DLT_LTALK);  # returns 'LTALK'
+
+=item B<Net::Pcap::datalink_val_to_description($linktype)>
+
+Translates a data link type value to a short description of that data link type.
+
+B<Example>
+
+    $descr = Net::Pcap::datalink_val_to_description(DLT_LTALK);  # returns 'Localtalk'
 
 =item B<Net::Pcap::snapshot($pcap)>
 
@@ -305,21 +453,32 @@ C<Net::Pcap::open_live()>.
 
 =head2 Error handling
 
-=over
+=over 4
 
 =item B<Net::Pcap::geterr($pcap)>
 
-Return an error message for the last error associated with the packet
+Returns an error message for the last error associated with the packet
 capture device C<$pcap>.
 
 =item B<Net::Pcap::strerror($errno)>
 
-Return a string describing error number C<$errno>.
+Returns a string describing error number C<$errno>.
 
 =item B<Net::Pcap::perror($pcap, $prefix)>
 
-Print the text of the last error associated with descriptor C<$pcap> on
+Prints the text of the last error associated with descriptor C<$pcap> on
 standard error, prefixed by C<$prefix>.
+
+=back
+
+=head2 Information
+
+=over 4
+
+=item B<Net::Pcap::lib_version()>
+
+Returns the name and version of the C<pcap> library the module was linked 
+against. 
 
 =back
 
@@ -398,40 +557,44 @@ The source code for libpcap is available from L<http://www.tcpdump.org/>
 
 =head1 AUTHORS
 
-Current maintainer: 
-
-=over 4
-
-=item SE<eacute>bastien Aperghis-Tramoni E<lt>sebastien@aperghis.netE<gt>
-
-=back
+Current maintainer is SE<eacute>bastien Aperghis-Tramoni (SAPER) 
+E<lt>sebastien@aperghis.netE<gt> with the help of Jean-Louis Morel (JLMOREL) 
+E<lt>jl_morel@bribes.orgE<gt> for WinPcap support. 
 
 Previous authors & maintainers: 
 
 =over 4
 
-=item Marco Carnut E<lt>kiko@tempest.com.brE<gt>
+=item *
 
-=item Tim Potter E<lt>tpot@frungy.orgE<gt>
+Marco Carnut (KCARNUT) E<lt>kiko@tempest.com.brE<gt>
 
-=item Bo Adler E<lt>thumper@alumni.caltech.eduE<gt>
+=item *
 
-=item Peter Lister E<lt>p.lister@cranfield.ac.ukE<gt>
+Tim Potter (TIMPOTTER) E<lt>tpot@frungy.orgE<gt>
+
+=item *
+
+Bo Adler (BOADLER) E<lt>thumper@alumni.caltech.eduE<gt>
+
+=item *
+
+Peter Lister (PLISTER) E<lt>p.lister@cranfield.ac.ukE<gt>
 
 =back
 
 
 =head1 COPYRIGHT
 
-Copyright (c) 2005 SE<eacute>bastien Aperghis-Tramoni. All rights reserved. 
+Copyright (C) 2005 SE<eacute>bastien Aperghis-Tramoni. All rights reserved. 
 
-Copyright (c) 2003 Marco Carnut. All rights reserved. 
+Copyright (C) 2003 Marco Carnut. All rights reserved. 
 
-Copyright (c) 1999-2000 Tim Potter. All rights reserved. 
+Copyright (C) 1999-2000 Tim Potter. All rights reserved. 
 
-Copyright (c) 1998 Bo Adler. All rights reserved. 
+Copyright (C) 1998 Bo Adler. All rights reserved. 
 
-Copyright (c) 1997 Peter Lister. All rights reserved. 
+Copyright (C) 1997 Peter Lister. All rights reserved. 
 
 This program is free software; you can redistribute it and/or modify 
 it under the same terms as Perl itself.

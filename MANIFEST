@@ -6,6 +6,11 @@ Changes
 Pcap.pm
 Pcap.xs
 typemap
+ppport.h
+macros
+macros.sh
+fallback/const-c.inc
+fallback/const-xs.inc
 t/00-load.t
 t/01-api.t
 t/02-lookup.t
@@ -23,6 +28,9 @@ t/13-dispatch.t
 t/14-datalink.t
 t/15-is_swapped.t
 t/16-setnonblock.t
+t/17-lib_version.t
+t/18-open_dead.t
+t/19-breakloop.t
 t/leaktests/leaktest1.pl
 t/leaktests/leaktest2.pl
 t/leaktests/leaktest3.pl

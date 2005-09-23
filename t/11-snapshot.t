@@ -22,7 +22,7 @@ my($dev,$pcap,$snapshot,$err) = ('','','','');
 
 # Testing error messages
 SKIP: {
-    skip "Test::Exception not available", 1 unless $has_test_exception;
+    skip "Test::Exception not available", 2 unless $has_test_exception;
 
     # snapshot() errors
     throws_ok(sub {

@@ -12,7 +12,7 @@ my($dev,$pcap,$r,$err) = ('','','','');
 
 # Testing error messages
 SKIP: {
-    skip "Test::Exception not available", 1 unless $has_test_exception;
+    skip "Test::Exception not available", 4 unless $has_test_exception;
 
     # setnonblock() errors
     throws_ok(sub {

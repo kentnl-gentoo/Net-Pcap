@@ -1,6 +1,21 @@
-Revision history for Net-Pcap
+The (quite complex) revision history for Net-Pcap
 
-2005.09.15 - 0.06 - Sebastien Aperghis-Tramoni
+2005.09.23 - 0.07 - Sebastien Aperghis-Tramoni (SAPER)
+  - [BUGFIX] RT#7455: Memory corruption when using Net::Pcap::Compile()
+  - [BUGFIX] Merged Win32 fix to pcap_lookupdev() from JLM/0.04.02
+  - [FEATURE] Added wrappers for lib_version(), open_dead(), set_datalink(), 
+    datalink_name_to_val(), datalink_val_to_name(), datalink_val_to_description()
+  - [FEATURE] Added support for all DLT_*, MODE_*, PCAP_* and useful BPF_* 
+    numeric macros using ExtUtils::Constant.
+  - [FEATURE] Added const qualifiers when appropriate.
+  - [FEATURE] Added ppport.h
+  - [DIST] Added libpcap detection using have_library() from XML::LibXML::Common
+  - [TESTS] Fixed scripts t/10-fileno.t, 
+  - [TESTS] Added t/17-lib_version.t, t/18-open_dead.t, 19-breakloop.t
+  - [TESTS] Updated t/14-datalink.t
+  - [DOC] Updated documentation.
+
+2005.09.15 - 0.06 - Sebastien Aperghis-Tramoni (SAPER)
   - [FEATURE] RT#7594: added pcap_setnonblock() and pcap_getnonblock(). Thanks 
     to Ernesto Domat for the patch.
   - [FEATURE] Changed the warning returned by stats() in order to be uniform 
@@ -13,27 +28,32 @@ Revision history for Net-Pcap
   - [DOC] RT#7671: documentation typo
   - [DOC] Updated the documentation.
 
-2003.06.16 - 0.05 - Marco Carnut
+2003.09.03 - 0.04.02 - Jean-Louis Morel (JLMOREL) [BASED ON 0.04, NOT RELEASED ON CPAN]
+  - includes fixes for WinPcap
+  - added wrappers for several new libpcap functions
+  - added several WinPcap specific functions
+
+2003.06.16 - 0.05 - Marco Carnut (KCARNUT)
   - includes fixes for Cygwin and WinPcap (see http://winpcap.polito.it/
     and install the SDK)
-  - findalldevs() wrapper available
+  - added wrapper for findalldevs()
   - lookupdev() returns the first item from findalldevs()
-  - test now pass under Cygwin by disabling the root user check
+  - tests now pass under Cygwin by disabling the root user check
 
-2000.05.17 - 0.04 - Tim Potter
+2000.05.17 - 0.04 - Tim Potter (TIMPOTTER)
   - now compiles and works with Perl 5.6.0
 
-1999.03.24 - 0.03 - Tim Potter
+1999.03.24 - 0.03 - Tim Potter (TIMPOTTER)
   - complete rewrite using XS
   - all pcap library functions fully implemented
   - packet header and statistical information passed as Perl hashes
   - added Pod documentation
 
-1998.12.06 - 0.02 - Bo Adler
+1998.12.06 - 0.02 - Bo Adler (BOADLER) [NOT RELEASED ON CPAN]
   - update to make it work with libpcap 0.4
   - fixed problem in stats() method call
   - changed the arguments of the loop()/dispatch() callback to include 
     the pcap_hdr struct
 
-1997.08.27 - 0.01 - Peter Lister
+1997.08.27 - 0.01 - Peter Lister (PLISTER)
   - initial implementation using SWIG

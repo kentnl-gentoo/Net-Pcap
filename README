@@ -39,8 +39,7 @@ INSTALLATION
     Net::Pcap has been tested by the author on the following systems, 
     but is likely to run on many more.
 
-      - Solaris 2.6, gcc 2.8.1
-      - Linux 2.2, gcc 2.8.1
+      - Linux 2.6, gcc 3.4.1
 
     See also the corresponding CPAN Testers page: 
         http://testers.cpan.org/show/Net-Pcap.html
@@ -63,10 +62,17 @@ HISTORY
     Version 0.05 was released by Marco Carnut (KCARNUT) with fixes 
     to make it work with Cygwin and WinPcap. 
 
+    Version 0.04.02 was independantly created by Jean-Louis Morel 
+    (JLMOREL) but not uploaded on the CPAN. It can be found here: 
+        http://www.bribes.org/perl/wnetpcap.html
+    Based on Tim Potter's version 0.04, it included fixes for WinPcap
+    and added wrappers for several new libpcap functions as well as 
+    WinPcap specific functions. 
+
 
 COPYRIGHT AND LICENCE
 
-    Copyright (C) 2005 Sébastien Aperghis-Tramoni
+    Copyright (C) 2005 Sébastien Aperghis-Tramoni. All rights reserved.
     Copyright (c) 2003 Marco Carnut. All rights reserved. 
     Copyright (c) 1999-2000 Tim Potter. All rights reserved. 
     Copyright (c) 1998 Bo Adler. All rights reserved. 
