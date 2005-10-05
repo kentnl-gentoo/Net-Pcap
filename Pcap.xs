@@ -1,11 +1,13 @@
 /*
- * pcap.xs
+ * Pcap.xs
  *
  * XS wrapper for LBL pcap(3) library.
  *
- * Copyright (c) 1999 Tim Potter. All rights reserved. This program is free 
- * software; you can redistribute it and/or modify it under the same terms 
- * as Perl itself.
+ * Copyright (C) 2005 Sebastien Aperghis-Tramoni. All rights reserved.
+ * Copyright (C) 2003 Marco Carnut. All rights reserved. 
+ * Copyright (C) 1999 Tim Potter. All rights reserved. 
+ * This program is free software; you can redistribute it and/or modify it 
+ * under the same terms as Perl itself.
  *
  */
 
@@ -13,34 +15,47 @@
 extern "C" {
 #endif
 
-#define  WINSOCK2_H_REQUESTED
+#ifdef _CYGWIN
+#include <windows.h>
+#endif
+
 #include "EXTERN.h"
 #include "perl.h"
 #include "XSUB.h"
 
 #include "ppport.h"
 
+#ifndef _WIN32
+#include <signal.h>
+#endif
+
 #include <pcap.h>
 #include <pcap-bpf.h>
 
 #include "const-c.inc"
 
-#ifdef _WIN32
-#define _WINPCAP
+#ifdef _WINPCAP
 #include <Win32-Extensions.h>
 #endif
 
-#ifdef _WINPCAP
-#include <remote-ext.h>
+
+/* Compatibility with older Perl. Should be added to ppport.h */
+#ifndef PERL_SIGNALS_UNSAFE_FLAG
+static U32  PL_signals = 0;
+#define PERL_SIGNALS_UNSAFE_FLAG    0x0001
 #endif
 
-/* avoid space in the name of struct_bpf_programPtr class */
-typedef struct bpf_program struct_bpf_program;
+#ifndef XSprePUSH
+#define XSprePUSH (sp = PL_stack_base + ax - 1)
+#endif
 
 #ifdef __cplusplus
 }
 #endif
 
+
+#define FUNCTION_NOT_IMPLEMENTED_ERROR(func)  \
+    croak("The function " #func "() is not available in your release of the pcap library."); 
 
 /* Wrapper for callback function */
 
@@ -91,29 +106,19 @@ pcap_lookupdev(err)
 
 	CODE:
 		if (SvROK(err)) {
-			char *errbuf = safemalloc(PCAP_ERRBUF_SIZE);
+			char *errbuf = safemalloc(PCAP_ERRBUF_SIZE+1);
 			SV *err_sv = SvRV(err);
-			char *dev;
 
-			dev = pcap_lookupdev(errbuf);
-
-			if (!strcmp(dev,"\\")) {
-				pcap_if_t *alldevs;
-				if (pcap_findalldevs(&alldevs, errbuf) == -1) {
-     					sv_setpv(err_sv, errbuf);
-				} else {
-					dev = alldevs->name;
-				}
-			} 
-#ifdef _WIN32
-			int length = lstrlenW((PWSTR)RETVAL) + 2;
-			char *r = safemalloc(length);  /* Conversion from Unicode to ANSI */
-			WideCharToMultiByte(CP_ACP, 0, (PWSTR)RETVAL, -1, r, length, NULL, NULL);	
-			lstrcpyA(RETVAL, r);
-			safefree(r);
+			RETVAL = pcap_lookupdev(errbuf);
+#ifdef _WINPCAP
+			{
+				int length = lstrlenW((PWSTR)RETVAL) + 2;
+				char *r = safemalloc(length);  // Conversion from Unicode to ANSI
+				WideCharToMultiByte(CP_ACP, 0, (PWSTR)RETVAL, -1, r, length, NULL, NULL);	
+				lstrcpyA(RETVAL, r);
+				safefree(r);
+			}
 #endif
-			RETVAL = dev;
-
 			if (RETVAL == NULL) {
 				sv_setpv(err_sv, errbuf);
 			} else {
@@ -121,6 +126,7 @@ pcap_lookupdev(err)
 			}
 
 			safefree(errbuf);
+
 		} else
 			croak("arg1 not a hash ref");
 
@@ -138,7 +144,7 @@ pcap_lookupnet(device, net, mask, err)
 
 	CODE:
 		if (SvROK(net) && SvROK(mask) && SvROK(err)) {
-			char *errbuf = safemalloc(PCAP_ERRBUF_SIZE);
+			char *errbuf = safemalloc(PCAP_ERRBUF_SIZE+1);
 			unsigned int netp, maskp;
 			SV *net_sv  = SvRV(net);
 			SV *mask_sv = SvRV(mask);
@@ -173,24 +179,49 @@ pcap_lookupnet(device, net, mask, err)
 
 
 void
-pcap_findalldevs(err)
-	SV *err
+pcap_findalldevs_xs(devinfo, err)
+    SV * devinfo
+    SV * err
+ 
+    PREINIT:
+        char *errbuf = safemalloc(PCAP_ERRBUF_SIZE+1);
+    
+    PPCODE:
+        if ( SvROK(err) && SvROK(devinfo) && (SvTYPE(SvRV(devinfo)) == SVt_PVHV) ) {
+            pcap_if_t *alldevs, *d;
+            HV *hv;
+            SV *err_sv = SvRV(err);
+            
+            hv = (HV *)SvRV(devinfo);
+            
+            if (pcap_findalldevs(&alldevs, errbuf) == 0) {
+                for (d=alldevs; d; d=d->next) {
+                    XPUSHs(sv_2mortal(newSVpv(d->name, 0)));
 
-	PPCODE:
-		if (SvROK(err)) {
-			pcap_if_t *alldevs;
-			pcap_if_t *d;
-			SV *err_sv = SvRV(err);
-			char *errbuf = safemalloc(PCAP_ERRBUF_SIZE);
-			if (pcap_findalldevs(&alldevs, errbuf) == -1) {
-     				sv_setpv(err_sv, errbuf);
-	   	        } else {
-					for (d=alldevs; d; d=d->next) {
-						XPUSHs(sv_2mortal(newSVpv(d->name, 0)));
-				}
-			}
-		} else
-			croak ("arg1 not a reference");
+                    if (d->description)
+                        hv_store(hv, d->name, strlen(d->name), newSVpv(d->description, 0), 0);
+                    else
+                        if( (strcmp(d->name,"lo") == 0) || (strcmp(d->name,"lo0") == 0)) 
+                            hv_store(hv, d->name, strlen(d->name), 
+                                    newSVpv("Loopback device", 0), 0);
+                        else
+                            hv_store(hv, d->name, strlen(d->name), 
+                                    newSVpv("No description available", 0), 0);
+                }
+        
+                pcap_freealldevs(alldevs);
+                err_sv = &PL_sv_undef;
+
+            } else {
+                sv_setpv(err_sv, errbuf);
+            }
+        } else {
+            if ( !SvROK(devinfo) || (SvTYPE(SvRV(devinfo)) != SVt_PVHV) ) 
+                croak("arg1 not a hash ref");
+            if ( !SvROK(err) )
+                croak("arg2 not a scalar ref");
+        }
+        safefree(errbuf);
 
 
 pcap_t *
@@ -203,7 +234,7 @@ pcap_open_live(device, snaplen, promisc, to_ms, err)
 
 	CODE:
 		if (SvROK(err)) {
-			char *errbuf = safemalloc(PCAP_ERRBUF_SIZE);
+			char *errbuf = safemalloc(PCAP_ERRBUF_SIZE+1);
 			SV *err_sv = SvRV(err);
 
 			RETVAL = pcap_open_live(device, snaplen, promisc, to_ms, errbuf);
@@ -215,6 +246,7 @@ pcap_open_live(device, snaplen, promisc, to_ms, err)
 			}
 
 			safefree(errbuf);
+
 		} else
 			croak("arg5 not a reference");
 
@@ -239,7 +271,7 @@ pcap_open_offline(fname, err)
 
 	CODE:
 		if (SvROK(err)) {
-			char *errbuf = safemalloc(PCAP_ERRBUF_SIZE);
+			char *errbuf = safemalloc(PCAP_ERRBUF_SIZE+1);
 			SV *err_sv = SvRV(err);
 
 			RETVAL = pcap_open_offline(fname, errbuf);
@@ -251,6 +283,7 @@ pcap_open_offline(fname, err)
 			}
 
 			safefree(errbuf);
+
 		} else
 			croak("arg2 not a reference");	
 
@@ -272,18 +305,22 @@ pcap_setnonblock(p, nb, err)
 	SV *err
 
 	CODE:
-		char *errbuf = safemalloc(PCAP_ERRBUF_SIZE);
-		SV *err_sv = SvRV(err);
+		if (SvROK(err)) {
+			char *errbuf = safemalloc(PCAP_ERRBUF_SIZE+1);
+			SV *err_sv = SvRV(err);
 
-		RETVAL = pcap_setnonblock(p, nb, errbuf);
+			RETVAL = pcap_setnonblock(p, nb, errbuf);
 
-		if (RETVAL == -1) {
-			sv_setpv(err_sv, errbuf);
-		} else {
-			err_sv = &PL_sv_undef;
-		}
+			if (RETVAL == -1) {
+				sv_setpv(err_sv, errbuf);
+			} else {
+				err_sv = &PL_sv_undef;
+			}
 
-		safefree(errbuf);
+			safefree(errbuf);
+
+		} else
+			croak("arg3 not a reference");	
 
 	OUTPUT:
 		err
@@ -292,22 +329,26 @@ pcap_setnonblock(p, nb, err)
 
 int
 pcap_getnonblock(p, err)
-  pcap_t *p
-  SV *err
+    pcap_t *p
+    SV *err
 
-  CODE:
-    char *errbuf = safemalloc(PCAP_ERRBUF_SIZE);
-    SV *err_sv = SvRV(err);
+    CODE:
+        if (SvROK(err)) {
+            char *errbuf = safemalloc(PCAP_ERRBUF_SIZE+1);
+            SV *err_sv = SvRV(err);
 
-    RETVAL = pcap_getnonblock(p, errbuf);
+            RETVAL = pcap_getnonblock(p, errbuf);
 
-    if (RETVAL == -1) {
-        sv_setpv(err_sv, errbuf);
-    } else {
-        err_sv = &PL_sv_undef;
-    }
+            if (RETVAL == -1) {
+                sv_setpv(err_sv, errbuf);
+            } else {
+                err_sv = &PL_sv_undef;
+            }
 
-    safefree(errbuf);
+            safefree(errbuf);
+
+		} else
+			croak("arg2 not a reference");	
 
   OUTPUT:
     err
@@ -322,14 +363,21 @@ pcap_dispatch(p, cnt, callback, user)
 	SV *user
 
 	CODE:
+    {
+		U32 SAVE_signals;
 		callback_fn = newSVsv(callback);
 		user = newSVsv(user);
 
+		*(pcap_geterr(p)) = '\0';   /* reset error string */
+
+		SAVE_signals = PL_signals;  /* Allow the call to be interrupted by signals */
+		PL_signals |= PERL_SIGNALS_UNSAFE_FLAG;
 		RETVAL = pcap_dispatch(p, cnt, callback_wrapper, (u_char *)user);
+		PL_signals = SAVE_signals;
 
 		SvREFCNT_dec(user);
 		SvREFCNT_dec(callback_fn);
-		
+    }	
 	OUTPUT:
 		RETVAL
 
@@ -341,33 +389,42 @@ pcap_loop(p, cnt, callback, user)
 	SV *callback
 	SV *user
 
-	CODE:	
+	CODE:
+    {
+		U32 SAVE_signals;
 		callback_fn = newSVsv(callback);
 		user = newSVsv(user);
 
+		SAVE_signals = PL_signals;  /* Allow the call to be interrupted by signals */
+		PL_signals |= PERL_SIGNALS_UNSAFE_FLAG;
 		RETVAL = pcap_loop(p, cnt, callback_wrapper, (u_char *)user);
+		PL_signals = SAVE_signals;
 
 		SvREFCNT_dec(user);
 		SvREFCNT_dec(callback_fn);
-
+    }
 	OUTPUT:
 		RETVAL
 
 
 SV *
 pcap_next(p, h)
-        pcap_t *p
+	pcap_t *p
 	SV *h
 
 	CODE:
 		if (SvROK(h) && (SvTYPE(SvRV(h)) == SVt_PVHV)) {
 			struct pcap_pkthdr real_h;
 			const u_char *result;
+			U32 SAVE_signals;
 			HV *hv;
 
 			memset(&real_h, '\0', sizeof(real_h));
 
+			SAVE_signals = PL_signals;  /* Allow the call to be interrupted by signals */
+			PL_signals |= PERL_SIGNALS_UNSAFE_FLAG;
 			result = pcap_next(p, &real_h);
+			PL_signals = SAVE_signals;
 
 			hv = (HV *)SvRV(h);	
 	
@@ -382,8 +439,7 @@ pcap_next(p, h)
 				hv_store(hv, "len", strlen("len"),
 					 newSViv(real_h.len), 0);	
 
-				RETVAL = newSVpv((char *)result, 
-						 real_h.caplen);
+				RETVAL = newSVpv((char *)result, real_h.caplen);
 			} else 
 				RETVAL = &PL_sv_undef;
 
@@ -458,10 +514,12 @@ pcap_compile(p, fp, str, optimize, mask)
 		if (SvROK(fp)) {
 			struct bpf_program *real_fp = safemalloc(sizeof(struct bpf_program));
 
+			*(pcap_geterr(p)) = '\0';   /* reset error string */
+
 			RETVAL = pcap_compile(p, real_fp, str, optimize, mask);
 
-			sv_setref_pv(SvRV(ST(1)), "struct bpf_programPtr",
-				     (void *)real_fp);
+			sv_setref_pv(SvRV(fp), "struct bpf_programPtr", (void *)real_fp);
+
 		} else
 			croak("arg2 not a reference");
 
@@ -477,6 +535,11 @@ pcap_setfilter(p, fp)
 
 
 void
+pcap_freecode(fp)
+	struct bpf_program *fp
+
+
+void
 pcap_breakloop(p)
     pcap_t *p
 
@@ -488,6 +551,16 @@ pcap_close(p)
 
 void
 pcap_dump_close(p)
+	pcap_dumper_t *p
+
+
+FILE *
+pcap_dump_file(p)
+	pcap_dumper_t *p
+
+
+int
+pcap_dump_flush(p)
 	pcap_dumper_t *p
 
 
@@ -578,6 +651,8 @@ pcap_stats(p, ps)
 		if (SvROK(ps) && (SvTYPE(SvRV(ps)) == SVt_PVHV)) {
 			struct pcap_stat real_ps;
 			HV *hv;
+
+			*(pcap_geterr(p)) = '\0';   /* reset error string */
 
 			RETVAL = pcap_stats(p, &real_ps);
 

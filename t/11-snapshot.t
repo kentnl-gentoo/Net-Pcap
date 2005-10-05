@@ -5,10 +5,10 @@ use Test::More;
 my @sizes;  # snapshot sizes
 BEGIN {
     @sizes = (128, 512, 1024, 2048, 4096, 8192, int(10000*rand), int(10000*rand), int(10000*rand), int(10000*rand));
-    my $proto = getprotobyname('icmp');
+    use lib 't';
+    require 'CheckAuth.pl';
 
-    if(socket(S, PF_INET, SOCK_RAW, $proto)) {
-        close(S);
+    if(is_allowed_to_use_pcap()) {
         plan tests => @sizes * 2 + 2
     } else {
         plan skip_all => "must be run as root"
@@ -31,7 +31,7 @@ SKIP: {
        "calling snapshot() with no argument");
 
     throws_ok(sub {
-        Net::Pcap::snapshot(undef)
+        Net::Pcap::snapshot(0)
     }, '/^p is not of type pcap_tPtr/', 
        "calling snapshot() with incorrect argument type");
 }

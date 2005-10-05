@@ -3,7 +3,7 @@ use strict;
 use File::Spec;
 use Socket;
 use Test::More;
-BEGIN { plan tests => 16 }
+BEGIN { plan tests => 15 }
 use Net::Pcap;
 
 eval "use Test::Exception"; my $has_test_exception = !$@;
@@ -21,7 +21,7 @@ SKIP: {
        "calling file() with no argument");
 
     throws_ok(sub {
-        Net::Pcap::file(undef)
+        Net::Pcap::file(0)
     }, '/^p is not of type pcap_tPtr/', 
        "calling file() with incorrect argument type");
 
@@ -32,17 +32,28 @@ SKIP: {
        "calling fileno() with no argument");
 
     throws_ok(sub {
-        Net::Pcap::fileno(undef)
+        Net::Pcap::fileno(0)
     }, '/^p is not of type pcap_tPtr/', 
        "calling fileno() with incorrect argument type");
+
+    # get_selectable_fd() errors
+    #throws_ok(sub {
+    #    Net::Pcap::get_selectable_fd()
+    #}, '/^Usage: Net::Pcap::get_selectable_fd\(p\)/', 
+    #   "calling get_selectable_fd() with no argument");
+
+    #throws_ok(sub {
+    #    Net::Pcap::get_selectable_fd(0)
+    #}, '/^p is not of type pcap_tPtr/', 
+    #   "calling get_selectable_fd() with incorrect argument type");
 }
 
 SKIP: {
-    my $proto = getprotobyname('icmp');
-    if(socket(S, PF_INET, SOCK_RAW, $proto)) {
-        close(S);
-    } else {
-        skip "must be run as root", 6
+    use lib 't';
+    require 'CheckAuth.pl';
+
+    unless(is_allowed_to_use_pcap()) {
+        skip "must be run as root", 5
     }
 
     # Find a device and open it
@@ -51,20 +62,22 @@ SKIP: {
     isa_ok( $pcap, 'pcap_tPtr', "\$pcap" );
 
     # Testing file()
+    $filehandle = 0;
     eval { $filehandle = Net::Pcap::file($pcap) };
     is( $@, '', "file() on a live connection" );
-    TODO: {
-        local $TODO = "file() currently seems to always return undef";
-        $filehandle = undef;
-        ok( defined $filehandle, " - returned filehandle must be defined" );
-        isa_ok( $filehandle, 'GLOB', " - \$filehandle" );
-    }
+    is( $filehandle, undef, " - returned filehandle should be undef" );
 
     # Testing fileno()
     $fileno = undef;
     eval { $fileno = Net::Pcap::fileno($pcap) };
     is( $@, '', "fileno() on a live connection" );
     like( $fileno, '/^\d+$/', " - fileno must be an integer" );
+
+    # Testing get_selectable_fd()
+    #$fileno = undef;
+    #eval { $fileno = Net::Pcap::get_selectable_fd($pcap) };
+    #is( $@, '', "get_selectable_fd() on a live connection" );
+    #like( $fileno, '/^\d+$/', " - fileno must be an integer" );
 
     Net::Pcap::close($pcap);
 }
@@ -85,7 +98,18 @@ TODO: {
 # Testing fileno()
 eval { $fileno = Net::Pcap::fileno($pcap) };
 is( $@, '', "fileno() on a dump file" );
-like( $fileno, '/^\d+$/', " - fileno must be an integer" );
+# fileno() is documented to return -1 when called on save file, but seems 
+# to always return an actual file number. 
+TODO: {
+    local $TODO = " => result should be -1";
+    like( $fileno, '/^(?:\d+|-1)$/', " - fileno must be an integer" );
+}
+
+# Testing get_selectable_fd()
+#$fileno = undef;
+#eval { $fileno = Net::Pcap::get_selectable_fd($pcap) };
+#is( $@, '', "get_selectable_fd() on a dump file" );
+#like( $fileno, '/^\d+$/', " - fileno must be an integer: $fileno" );
 
 Net::Pcap::close($pcap);
 

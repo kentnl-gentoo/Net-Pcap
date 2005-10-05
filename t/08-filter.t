@@ -3,11 +3,11 @@ use strict;
 use Socket;
 use Test::More;
 BEGIN {
-    my $proto = getprotobyname('icmp');
+    use lib 't';
+    require 'CheckAuth.pl';
 
-    if(socket(S, PF_INET, SOCK_RAW, $proto)) {
-        close(S);
-        plan tests => 19
+    if(is_allowed_to_use_pcap()) {
+        plan tests => 22
     } else {
         plan skip_all => "must be run as root"
     }
@@ -25,7 +25,7 @@ $pcap = Net::Pcap::open_live($dev, 1024, 1, 0, \$err);
 
 # Testing error messages
 SKIP: {
-    skip "Test::Exception not available", 8 unless $has_test_exception;
+    skip "Test::Exception not available", 10 unless $has_test_exception;
 
     # compile() errors
     throws_ok(sub {
@@ -34,12 +34,12 @@ SKIP: {
        "calling compile() with no argument");
 
     throws_ok(sub {
-        Net::Pcap::compile(undef, undef, undef, undef, undef)
+        Net::Pcap::compile(0, 0, 0, 0, 0)
     }, '/^p is not of type pcap_tPtr/', 
        "calling compile() with incorrect argument type for arg1");
 
     throws_ok(sub {
-        Net::Pcap::compile($pcap, undef, undef, undef, undef)
+        Net::Pcap::compile($pcap, 0, 0, 0, 0)
     }, '/^arg2 not a reference/', 
        "calling compile() with incorrect argument type for arg2");
 
@@ -50,7 +50,7 @@ SKIP: {
        "calling compile() with no argument");
 
     throws_ok(sub {
-        Net::Pcap::geterr(undef)
+        Net::Pcap::geterr(0)
     }, '/^p is not of type pcap_tPtr/', 
        "calling geterr() with incorrect argument type for arg1");
 
@@ -61,14 +61,25 @@ SKIP: {
        "calling setfilter() with no argument");
 
     throws_ok(sub {
-        Net::Pcap::setfilter(undef, undef)
+        Net::Pcap::setfilter(0, 0)
     }, '/^p is not of type pcap_tPtr/', 
        "calling setfilter() with incorrect argument type for arg1");
 
     throws_ok(sub {
-        Net::Pcap::setfilter($pcap, undef)
+        Net::Pcap::setfilter($pcap, 0)
     }, '/^fp is not of type struct bpf_programPtr/', 
        "calling setfilter() with incorrect argument type for arg2");
+
+    # freecode() errors
+    throws_ok(sub {
+        Net::Pcap::freecode()
+    }, '/^Usage: Net::Pcap::freecode\(fp\)/', 
+       "calling freecode() with no argument");
+
+    throws_ok(sub {
+        Net::Pcap::freecode(0)
+    }, '/^fp is not of type struct bpf_programPtr/', 
+       "calling freecode() with incorrect argument type for arg1");
 
 }
 
@@ -93,6 +104,10 @@ if($res == 0) {
 eval { $res = Net::Pcap::setfilter($pcap, $filter) };
 is(   $@,   '', "setfilter()" );
 is(   $res,  0, " - result should be null: $res" );
+
+# Testing freecode()
+eval { Net::Pcap::freecode($filter) };
+is(   $@,   '', "freecode()" );
 
 # Testing geterr()
 eval { $err = Net::Pcap::geterr($pcap) };

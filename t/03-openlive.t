@@ -3,10 +3,10 @@ use strict;
 use Socket;
 use Test::More;
 BEGIN {
-    my $proto = getprotobyname('icmp');
+    use lib 't';
+    require 'CheckAuth.pl';
 
-    if(socket(S, PF_INET, SOCK_RAW, $proto)) {
-        close(S);
+    if(is_allowed_to_use_pcap()) {
         plan tests => 14
     } else {
         plan skip_all => "must be run as root"
@@ -30,7 +30,7 @@ SKIP: {
        "calling open_live() with no argument");
 
     throws_ok(sub {
-        Net::Pcap::open_live(0, 0, 0, 0, undef)
+        Net::Pcap::open_live(0, 0, 0, 0, 0)
     }, '/^arg5 not a reference/', 
        "calling open_live() with no reference for arg5");
 
@@ -41,7 +41,7 @@ SKIP: {
        "calling close() with no argument");
 
     throws_ok(sub {
-        Net::Pcap::close(undef)
+        Net::Pcap::close(0)
     }, '/^p is not of type pcap_tPtr/', 
        "calling close() with incorrect argument type");
 
@@ -66,6 +66,10 @@ is(   $err, '', " - \$err must be null: $err" ); $err = '';
 # Testing open_live() with fake device name
 eval { $pcap = Net::Pcap::open_live('this is not a device', 1024, 1, 0, \$err) };
 is(   $@,   '', "open_live()" );
-like( $err, '/^ioctl: (?:No such device)/', " - \$err must be set: $err" ); $err = '';
+if($^O eq 'MSWin32' or $^O eq 'cygwin') {
+    like( $err, '/^Error opening adapter:/', " - \$err must be set: $err" ); $err = '';
+} else {
+    like( $err, '/^ioctl: (?:No such device)/', " - \$err must be set: $err" ); $err = '';
+}
 is( $pcap, undef, " - \$pcap isn't defined" );
 

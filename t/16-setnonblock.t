@@ -3,7 +3,7 @@ use strict;
 use File::Spec;
 use Socket;
 use Test::More;
-BEGIN { plan tests => 21 }
+BEGIN { plan tests => 23 }
 use Net::Pcap;
 
 eval "use Test::Exception"; my $has_test_exception = !$@;
@@ -21,7 +21,7 @@ SKIP: {
        "calling setnonblock() with no argument");
 
     throws_ok(sub {
-        Net::Pcap::setnonblock(undef, undef, undef)
+        Net::Pcap::setnonblock(0, 0, 0)
     }, '/^p is not of type pcap_tPtr/', 
        "calling setnonblock() with incorrect argument type");
 
@@ -32,16 +32,16 @@ SKIP: {
        "calling getnonblock() with no argument");
 
     throws_ok(sub {
-        Net::Pcap::getnonblock(undef, undef)
+        Net::Pcap::getnonblock(0, 0)
     }, '/^p is not of type pcap_tPtr/', 
        "calling getnonblock() with incorrect argument type");
 }
 
 SKIP: {
-    my $proto = getprotobyname('icmp');
-    if(socket(S, PF_INET, SOCK_RAW, $proto)) {
-        close(S);
-    } else {
+    use lib 't';
+    require 'CheckAuth.pl';
+
+    unless(is_allowed_to_use_pcap()) {
         skip "must be run as root", 13
     }
 
@@ -70,6 +70,21 @@ SKIP: {
 # Open a sample dump
 $pcap = Net::Pcap::open_offline(File::Spec->catfile(qw(t samples ping-ietf-20pk-be.dmp)), \$err);
 isa_ok( $pcap, 'pcap_tPtr', "\$pcap" );
+
+# Testing error messages
+SKIP: {
+    skip "Test::Exception not available", 2 unless $has_test_exception;
+
+    throws_ok(sub {
+        Net::Pcap::setnonblock($pcap, 0, 0)
+    }, '/^arg3 not a reference/', 
+       "calling setnonblock() with incorrect argument type for arg3");
+
+    throws_ok(sub {
+        Net::Pcap::getnonblock($pcap, 0)
+    }, '/^arg2 not a reference/', 
+       "calling getnonblock() with incorrect argument type for arg2");
+}
 
 # Testing getnonblock()
 eval { $r = Net::Pcap::getnonblock($pcap, \$err) };

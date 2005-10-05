@@ -2,7 +2,59 @@ use strict;
 use ExtUtils::MakeMaker;
 eval "use ExtUtils::MakeMaker::Coverage";
 
-die <<"REASON" unless have_library('pcap');
+my($DEBUG,%config,$DEVNULL,$is_Win32,$has_Win32);
+
+if ($^O eq 'MSWin32') {
+    $config{LIBS}    = '-lwpcap';
+    $config{DEFINE}  = '-DWINSOCK2_H_REQUESTED -D_WINPCAP';
+
+} elsif ($^O eq 'cygwin') {
+    #$config{CCFLAGS} = '-Wall';
+    $config{LIBS}    = '-lwpcap';
+    $config{DEFINE}  = '-D_WINPCAP -D_CYGWIN';
+
+} else {
+    #$config{CCFLAGS} = '-Wall';
+    $config{INC}     = '-I/usr/local/include';
+    $config{LIBS}    = '-L/usr/local/lib -lpcap';
+}
+
+for my $arg (@ARGV) {
+    my($key,$val) = split /=/, $arg, 2;
+    $config{$key} = length $config{$key} ? "$config{$key} $val" : $val;
+}
+
+# patch ActivePerl CORE/sys/socket.h if necessary
+win32_sys_socket_patch() if $is_Win32;
+
+# The detection logic is: 
+#   1. first try to check if the pcap library is available; 
+#   2. then try to use the pcap_lib_version() function which is present 
+#      in recent version and is the only function that can be called 
+#      with no argument.
+if ($has_Win32) { # ActivePerl, Cygwin
+    die <<"REASON" unless have_library('wpcap', 'blank', 'pcap');
+The WinPcap driver is not installed on this machine. \a
+
+Please get and install the WinPcap driver and DLLs (auto-installer) from
+  http://www.winpcap.org/install/
+REASON
+
+    die <<"REASON" unless have_library('wpcap', 'pcap_lib_version', 'pcap');
+You appear to lack the WinPcap library. \a
+
+If it is installed in a non-standard location, please try setting the LIBS 
+and INC values on the command line.  For instance, if you have unziped the 
+developer's pack in C:\\WpdPack, you should execute: 
+
+    perl Makefile.PL INC=-IC:/WpdPack/Include "LIBS=-LC:/WpdPack/Lib -lwpcap"
+
+Or get and install the WinPcap developer's pack from
+  http://www.winpcap.org/install/
+REASON
+
+} else { # other systems (Unix)
+    die <<"REASON" unless have_library('pcap');
 You appear to lack the pcap(3) library. \a
 
 If it is installed in a non-standard location, please try setting the LIBS 
@@ -11,9 +63,22 @@ and INC values on the command line.
 Or get the sources and install the pcap library from http://www.tcpdump.org/
 
 If you install the pcap library using a system package, make sure to also 
-install the -devel package, which contains the C headers needed to compile 
-this module. 
+install the corresponding -devel package, which contains the C headers needed 
+to compile this module. 
 REASON
+
+
+    die <<"REASON" unless have_library('pcap', 'pcap_lib_version');
+You appear to have an old version of the pcap library. \a
+
+This module need a recent version of the pcap library in order to be compiled. 
+Please get the sources and install it from http://www.tcpdump.org/
+
+If you install the pcap library using a system package, make sure to also 
+install the corresponding -devel package, which contains the C headers needed 
+to compile this module. 
+REASON
+}
 
 WriteMakefile(
 	'NAME'             => 'Net::Pcap',
@@ -25,10 +90,9 @@ WriteMakefile(
 	'PREREQ_PM'        => {
         'Test::More' => '0.45', 
     },
-	CCFLAGS            => '-Wall', 
-	'LIBS'             => ['-lpcap'], 
 	dist => { 'COMPRESS' => "gzip -9f", 'SUFFIX'   => "gz" }, 
-	clean => { FILES => 'Net-P0f-*' }, 
+	clean => { FILES => 'Net-Pcap-*' }, 
+    %config,        # appropriate CCFLAFS, LDFLAGS and Define's
 );
 
 if(eval {require ExtUtils::Constant; 1}) {
@@ -71,6 +135,10 @@ if(eval {require ExtUtils::Constant; 1}) {
             XS_FILE      => 'const-xs.inc',
     );
 
+    open(MACROS, '>macros.all');
+    print MACROS join $/, @names;
+    close(MACROS);
+
 } else {
     use File::Copy;
     use File::Spec;
@@ -81,8 +149,53 @@ if(eval {require ExtUtils::Constant; 1}) {
 }
 
 
+# The following function patches ActivePerl CORE/sys/socket.h 
+sub win32_sys_socket_patch {
+    my $sockfile;
+
+    my $ifdef = <<'IFDEF';
+/* This file was patched so that WinPcap can use WinSock2.
+   The original file was renamed 'socket.h.orig'.
+ */
+#ifdef WINSOCK2_H_REQUESTED
+#include <winsock2.h>
+#else
+#include <winsock.h>
+#endif
+/* end of patch */
+IFDEF
+
+    foreach (@INC) {  # looking for socket.h
+        if (-e $_.'/CORE/sys/socket.h') {
+            $sockfile = $_.'/CORE/sys/socket.h';
+            last
+        }
+    }
+  
+    die "file 'socket.h' not found\n" unless $sockfile;
+    open H, "<$sockfile" or die "can't read file '$sockfile': $!\n";
+    my $h;
+    { local $/; $h = <H>; }  # slurp file
+    close H;
+  
+    if ($h =~ /\#include <winsock2.h>/) {
+        print "socket.h already patched... ok\n"
+    } else {
+        if (rename $sockfile, $sockfile.'.orig') {
+            $h =~ s/#include <winsock.h>/$ifdef/;
+            open H, "> $sockfile" or die $!;
+            print H $h;
+            close H;
+            print "socket.h patched... ok\n"
+        } else {
+            print "Unable to patch socket.h\n"
+        }
+    }
+}
+
 # The rest of the code, up to the end of this file, has been copied 
-# from XML::LibXML::Common Makefile.PL
+# from XML::LibXML::Common Makefile.PL, then modified in order to 
+# make all this detection stuff works under Win32
 
 ###################################################################
 # Functions
@@ -94,10 +207,10 @@ use Cwd;
 use Symbol;
 use File::Spec;
 
-my($DEBUG,%config,$DEVNULL,$is_Win32);
-
 BEGIN {
-    $is_Win32 = ($^O =~ /Win32/);
+    eval 'use Win32';
+    $has_Win32 = !$@;
+    $is_Win32 = ($^O eq 'MSWin32');
     if ($is_Win32) {
         $DEVNULL = 'DEVNULL';
     } else {
@@ -141,7 +254,7 @@ sub rm_fr {
 sub xsystem {
     my $command = shift;
     if ($DEBUG) {
-        print $command, "\n";
+        print "\nxsystem: ", $command, "\n";
         if (system($command) != 0) {
             die "system call to '$command' failed";
         }
@@ -263,18 +376,21 @@ sub try_link {
 }
 
 sub have_library {
-    my ($lib, $func) = (@_, "blank");
-    printf("checking for %s() in -l%s... ", $func, $lib) if $func ne "blank";
-    printf("looking for -l%s... ", $lib) if $func eq "blank";
+    my ($lib, $func, $header) = (@_, 'blank', 'blank');
+    printf("checking for %s() in -l%s... ", $func, $lib) if $func ne 'blank';
+    printf("looking for -l%s... ", $lib) if $func eq 'blank';
+    $header = $lib if $header eq 'blank';
 
     my $result;
-    if ($func) {
+    # try to find a specific function in the library
+    if ($func ne 'blank') {
         my $libs = $is_Win32 ? " $lib.lib  " : "-l$lib";
-#        my $libs = "-l$lib";
+
         if ($is_Win32) {
             $result = try_link(<<"SRC",undef );
 #include <windows.h>
 #include <winsock.h>
+#include <${header}.h>
 blank() { return 0; }
 int t() { ${func}(); return 0; }
 SRC
@@ -282,15 +398,30 @@ SRC
                 $result = try_link(<<"SRC", undef);
 #include <windows.h>
 #include <winsock.h>
+#include <${header}.h>
 blank() { return 0; }
 int t() { void ((*p)()); p = (void ((*)()))${func}; return 0; }
 SRC
             }
-        }
-        else {
+
+        } else {
             $result = try_link(<<"SRC", undef);
+#include <${header}.h>
 blank() { return 0; }
 int t() { ${func}(); return 0; }
+SRC
+        }
+
+    # no function was specified, so just try to load or link against the library
+    } else {
+        if($has_Win32) {
+            my $driver_ok = Win32::LoadLibrary("${lib}.dll");
+            $result = 1 and Win32::FreeLibrary($driver_ok) if $driver_ok;
+
+        } else {
+            $result = try_link(<<"SRC", undef);
+#include <${header}.h>
+blank() { return 0; }
 SRC
         }
     }

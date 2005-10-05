@@ -5,10 +5,10 @@ use Test::More;
 my $total;  # number of packets to process
 BEGIN {
     $total = 10;
-    my $proto = getprotobyname('icmp');
+    use lib 't';
+    require 'CheckAuth.pl';
 
-    if(socket(S, PF_INET, SOCK_RAW, $proto)) {
-        close(S);
+    if(is_allowed_to_use_pcap()) {
         plan tests => $total * 13 + 4
     } else {
         plan skip_all => "must be run as root"
@@ -35,12 +35,12 @@ SKIP: {
        "calling stats() with no argument");
 
     throws_ok(sub {
-        Net::Pcap::stats(undef, undef)
+        Net::Pcap::stats(0, 0)
     }, '/^p is not of type pcap_tPtr/', 
        "calling stats() with incorrect argument type");
 
     throws_ok(sub {
-        Net::Pcap::stats($pcap, undef)
+        Net::Pcap::stats($pcap, 0)
     }, '/^arg2 not a hash ref/', 
        "calling stats() with no reference for arg2");
 

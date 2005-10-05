@@ -51,7 +51,7 @@ SKIP: {
        "calling datalink() with no argument");
 
     throws_ok(sub {
-        Net::Pcap::datalink(undef)
+        Net::Pcap::datalink(0)
     }, '/^p is not of type pcap_tPtr/', 
        "calling datalink() with incorrect argument type");
 
@@ -62,7 +62,7 @@ SKIP: {
        "calling set_datalink() with no argument");
 
     throws_ok(sub {
-        Net::Pcap::set_datalink(undef,undef)
+        Net::Pcap::set_datalink(0, 0)
     }, '/^p is not of type pcap_tPtr/', 
        "calling set_datalink() with incorrect argument type");
 
@@ -87,10 +87,10 @@ SKIP: {
 }
 
 SKIP: {
-    my $proto = getprotobyname('icmp');
-    if(socket(S, PF_INET, SOCK_RAW, $proto)) {
-        close(S);
-    } else {
+    use lib 't';
+    require 'CheckAuth.pl';
+
+    unless(is_allowed_to_use_pcap()) {
         skip "must be run as root", 5
     }
 
@@ -176,5 +176,4 @@ for my $val (keys %val2descr) {
     is( $@, '', "datalink_val_to_description($val)" );
     is( $descr, $val2descr{$val}, " - checking expected value" );
 }
-
 

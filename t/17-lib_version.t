@@ -8,4 +8,8 @@ use Net::Pcap;
 my $version = '';
 eval { $version = Net::Pcap::lib_version() };
 is( $@, '', "lib_version()" );
-like( $version, '/^libpcap version \d\.\d+\.\d+$/', " - checking version string ($version)" );
+if ($^O eq 'MSWin32' or $^O eq 'cygwin') {
+    like( $version, '/^WinPcap version \d\.\d+/', " - checking version string ($version)" );
+} else {
+    like( $version, '/^libpcap version \d\.\d+\.\d+$/', " - checking version string ($version)" );
+}

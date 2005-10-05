@@ -11,6 +11,8 @@ macros
 macros.sh
 fallback/const-c.inc
 fallback/const-xs.inc
+stubs.inc
+t/CheckAuth.pl
 t/00-load.t
 t/01-api.t
 t/02-lookup.t
@@ -31,12 +33,7 @@ t/16-setnonblock.t
 t/17-lib_version.t
 t/18-open_dead.t
 t/19-breakloop.t
-t/leaktests/leaktest1.pl
-t/leaktests/leaktest2.pl
-t/leaktests/leaktest3.pl
-t/leaktests/leaktest4.pl
-t/leaktests/leaktest5.pl
-t/leaktests/leaktest6.pl
+t/20-constants.t
 t/podcover.t
 t/pod.t
 t/portfs.t

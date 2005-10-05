@@ -5,11 +5,11 @@ use Test::More;
 my $total;  # number of packets to process
 BEGIN {
     $total = 10;
-    my $proto = getprotobyname('icmp');
+    use lib 't';
+    require 'CheckAuth.pl';
 
-    if(socket(S, PF_INET, SOCK_RAW, $proto)) {
-        close(S);
-        plan tests => $total * 20 + 8
+    if(is_allowed_to_use_pcap()) {
+        plan tests => $total * 22 + 20
     } else {
         plan skip_all => "must be run as root"
     }
@@ -26,7 +26,7 @@ $pcap = Net::Pcap::open_live($dev, 1024, 1, 0, \$err);
 
 # Testing error messages
 SKIP: {
-    skip "Test::Exception not available", 2 unless $has_test_exception;
+    skip "Test::Exception not available", 10 unless $has_test_exception;
 
     # dump_open() errors
     throws_ok(sub {
@@ -35,9 +35,53 @@ SKIP: {
        "calling dump_open() with no argument");
 
     throws_ok(sub {
-        Net::Pcap::dump_open(undef, undef)
+        Net::Pcap::dump_open(0, 0)
     }, '/^p is not of type pcap_tPtr/', 
        "calling dump_open() with incorrect argument type");
+
+    # dump() errors
+    throws_ok(sub {
+        Net::Pcap::dump()
+    }, '/^Usage: Net::Pcap::dump\(p, h, sp\)/', 
+       "calling dump() with no argument");
+
+    throws_ok(sub {
+        Net::Pcap::dump(0, 0, 0)
+    }, '/^p is not of type pcap_dumper_tPtr/', 
+       "calling dump() with incorrect argument type for arg1");
+
+    # dump_close() errors
+    throws_ok(sub {
+        Net::Pcap::dump_close()
+    }, '/^Usage: Net::Pcap::dump_close\(p\)/', 
+       "calling dump_close() with no argument");
+
+    throws_ok(sub {
+        Net::Pcap::dump_close(0)
+    }, '/^p is not of type pcap_dumper_tPtr/', 
+       "calling dump_close() with incorrect argument type");
+
+    # dump_file() errors
+    throws_ok(sub {
+        Net::Pcap::dump_file()
+    }, '/^Usage: Net::Pcap::dump_file\(p\)/', 
+       "calling dump_file() with no argument");
+
+    throws_ok(sub {
+        Net::Pcap::dump_file(0)
+    }, '/^p is not of type pcap_dumper_tPtr/', 
+       "calling dump_file() with incorrect argument type");
+
+    # dump_flush() errors
+    throws_ok(sub {
+        Net::Pcap::dump_flush()
+    }, '/^Usage: Net::Pcap::dump_flush\(p\)/', 
+       "calling dump_flush() with no argument");
+
+    throws_ok(sub {
+        Net::Pcap::dump_flush(0)
+    }, '/^p is not of type pcap_dumper_tPtr/', 
+       "calling dump_flush() with incorrect argument type");
 
 }
 
@@ -51,6 +95,27 @@ my $size = 0;
 eval { $dumper = Net::Pcap::dump_open($pcap, $dump_file) };
 is(   $@,   '', "dump_open()" );
 ok( defined $dumper, " - dumper is defined" );
+
+TODO: {
+    todo_skip "Hmm.. when executed, dump_file() corrupts something somewhere, making this script dumps core at the end", 3;
+    my $filehandle;
+    eval { $filehandle = Net::Pcap::dump_file($dumper) };
+    is( $@, '', "dump_file()" );
+    ok( defined $filehandle, "returned filehandle is defined" );
+    isa_ok( $filehandle, 'GLOB', "\$filehandle" );
+}
+
+# Testing error messages
+SKIP: {
+    skip "Test::Exception not available", 1 unless $has_test_exception;
+
+    # dump() errors
+    throws_ok(sub {
+        Net::Pcap::dump($dumper, 0, 0)
+    }, '/^arg2 not a hash ref/', 
+       "calling dump() with incorrect argument type for arg2");
+
+}
 
 sub process_packet {
     my($user_data, $header, $packet) = @_;
@@ -74,6 +139,11 @@ sub process_packet {
     eval { Net::Pcap::dump($dumper, $header, $packet) };
     is(   $@,   '', "dump()");
 
+    my $r;
+    eval { $r = Net::Pcap::dump_flush($dumper) };
+    is(   $@,   '', "dump_flush()");
+    is( $r, 0, " - result: $r" );
+
     $size += $header->{caplen};
     $count++;
 }
@@ -86,6 +156,6 @@ is(   $@,   '', "dump_close()" );
 ok( -f $dump_file, "dump file created" );
 ok( -s $dump_file >= $size, "dump file size" );
 
-Net::Pcap::close($pcap);
 unlink($dump_file);
+Net::Pcap::close($pcap);
 

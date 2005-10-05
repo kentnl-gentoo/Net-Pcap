@@ -1,5 +1,30 @@
 The (quite complex) revision history for Net-Pcap
 
+2005.10.05 - 0.08 - Sebastien Aperghis-Tramoni (SAPER)
+  - [BUGFIX] RT#6320: loop() conflicts with alarm(). Thanks to Rafaël Garcia-Suarez 
+    for the patch. Also applied to dispatch() and next().
+  - [BUGFIX] setnonblock() and getnonblock() now checks that $err is a reference. 
+  - [BUGFIX] Merged Jean-Louis Morel patch: modification of the detection code in 
+    Makefile.PL for Win32; fixes for compiling with Microsoft compiler; 
+    simplification of lookupdev().
+  - [BUGFIX] Restored compatibility with Perl 5.6, 5.5 and 5.4
+  - [BUGFIX] Fixed memory leak in lookupdev().
+  - [BUGFIX] Some XS wrappers (compile(), dispatch(), stats()) now resets the error
+    string before calling the underlying functions.
+  - [FEATURE] Now tries to use XSLoader if available, then falls back to DynaLoader. 
+  - [FEATURE] Improved findalldevs(). See documentation.
+  - [FEATURE] Added wrapper for freecode(), dump_flush(), dump_file().
+  - [DIST] Improved detection code in Makefile.PL.
+  - [TESTS] Updated t/05-dump.t, t/12-next.t in order to increase code coverage (94%). 
+    What remains uncovered is cargo-cult defensive, hence untestable, code. 
+  - [TESTS] Updated t/01-api.t, t/05-dump.t, t/08-filter.t, t/10-fileno.t, 
+    t/13-dispatch.t, t/16-setnonblock.t
+  - [TESTS] Updated all test scripts in order to suppress warnings.
+  - [TESTS] Moved the the check whether pcap can be used in t/CheckAuth.pm and 
+    added Win32 specific code, supplied by Jean-Louis Morel.
+  - [TESTS] Added t/rt-6320.t for checking the bugfix of RT#6320.
+  - [TESTS] Added t/distchk.t
+
 2005.09.23 - 0.07 - Sebastien Aperghis-Tramoni (SAPER)
   - [BUGFIX] RT#7455: Memory corruption when using Net::Pcap::Compile()
   - [BUGFIX] Merged Win32 fix to pcap_lookupdev() from JLM/0.04.02

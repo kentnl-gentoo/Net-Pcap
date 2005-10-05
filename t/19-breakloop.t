@@ -5,10 +5,10 @@ use Test::More;
 my $total;  # number of packets to process
 BEGIN {
     $total = 10;
-    my $proto = getprotobyname('icmp');
+    use lib 't';
+    require 'CheckAuth.pl';
 
-    if(socket(S, PF_INET, SOCK_RAW, $proto)) {
-        close(S);
+    if(is_allowed_to_use_pcap()) {
         plan tests => 5
     } else {
         plan skip_all => "must be run as root"
@@ -35,7 +35,7 @@ SKIP: {
        "calling breakloop() with no argument");
 
     throws_ok(sub {
-        Net::Pcap::breakloop(undef)
+        Net::Pcap::breakloop(0)
     }, '/^p is not of type pcap_tPtr/', 
        "calling breakloop() with incorrect argument type");
 }

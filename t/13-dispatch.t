@@ -4,12 +4,12 @@ use Socket;
 use Test::More;
 my $total;  # number of packets to process
 BEGIN {
-    $total = 10;
-    my $proto = getprotobyname('icmp');
+    $total = 1;
+    use lib 't';
+    require 'CheckAuth.pl';
 
-    if(socket(S, PF_INET, SOCK_RAW, $proto)) {
-        close(S);
-        plan tests => 1 * 11 + 5
+    if(is_allowed_to_use_pcap()) {
+        plan tests => $total * 11 + 5
     } else {
         plan skip_all => "must be run as root"
     }
@@ -35,7 +35,7 @@ SKIP: {
        "calling dispatch() with no argument");
 
     throws_ok(sub {
-        Net::Pcap::dispatch(undef, undef, undef, undef)
+        Net::Pcap::dispatch(0, 0, 0, 0)
     }, '/^p is not of type pcap_tPtr/', 
        "calling dispatch() with incorrect argument type");
 
@@ -62,9 +62,9 @@ sub process_packet {
 }
 
 my $retval = 0;
-eval { $retval = Net::Pcap::dispatch($pcap, 10, \&process_packet, $user_text) };
+eval { $retval = Net::Pcap::dispatch($pcap, $total, \&process_packet, $user_text) };
 is(   $@,   '', "dispatch()" );
-is( $count, 1, "one packet processed" );
+is( $count, $total, "checking the number of processed packets" );
 is( $retval, $count, "checking return value" );
 
 Net::Pcap::close($pcap);
