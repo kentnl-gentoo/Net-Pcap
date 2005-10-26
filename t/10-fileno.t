@@ -1,8 +1,9 @@
 #!/usr/bin/perl -T
 use strict;
 use File::Spec;
-use Socket;
 use Test::More;
+use lib 't';
+use Utils;
 BEGIN { plan tests => 15 }
 use Net::Pcap;
 
@@ -49,12 +50,8 @@ SKIP: {
 }
 
 SKIP: {
-    use lib 't';
-    require 'CheckAuth.pl';
-
-    unless(is_allowed_to_use_pcap()) {
-        skip "must be run as root", 5
-    }
+    skip "must be run as root", 5
+        unless is_allowed_to_use_pcap();
 
     # Find a device and open it
     $dev = Net::Pcap::lookupdev(\$err);

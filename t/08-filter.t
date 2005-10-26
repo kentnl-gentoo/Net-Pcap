@@ -1,11 +1,9 @@
 #!/usr/bin/perl -T
 use strict;
-use Socket;
 use Test::More;
+use lib 't';
+use Utils;
 BEGIN {
-    use lib 't';
-    require 'CheckAuth.pl';
-
     if(is_allowed_to_use_pcap()) {
         plan tests => 22
     } else {

@@ -1,9 +1,16 @@
 #!/usr/bin/perl -T
 use strict;
 use File::Spec;
-use Socket;
 use Test::More;
-BEGIN { plan tests => 23 }
+use lib 't';
+use Utils;
+BEGIN {
+    if(is_available('pcap_setnonblock')) {
+        plan tests => 23
+    } else {
+        plan skip_all => "pcap_setnonblock() and pcap_getnonblock() are not available"
+    }
+}
 use Net::Pcap;
 
 eval "use Test::Exception"; my $has_test_exception = !$@;
@@ -38,9 +45,6 @@ SKIP: {
 }
 
 SKIP: {
-    use lib 't';
-    require 'CheckAuth.pl';
-
     unless(is_allowed_to_use_pcap()) {
         skip "must be run as root", 13
     }

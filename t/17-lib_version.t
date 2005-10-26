@@ -11,5 +11,5 @@ is( $@, '', "lib_version()" );
 if ($^O eq 'MSWin32' or $^O eq 'cygwin') {
     like( $version, '/^WinPcap version \d\.\d+/', " - checking version string ($version)" );
 } else {
-    like( $version, '/^libpcap version \d\.\d+\.\d+$/', " - checking version string ($version)" );
+    like( $version, '/^libpcap version (?:\d\.\d+\.\d+|unknown \(pre 0\.8\))$/', " - checking version string ($version)" );
 }

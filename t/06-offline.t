@@ -1,12 +1,11 @@
 #!/usr/bin/perl -T
 use strict;
-use Socket;
 use Test::More;
+use lib 't';
+use Utils;
 my $total;  # number of packets to process
 BEGIN {
     $total = 10;
-    use lib 't';
-    require 'CheckAuth.pl';
 
     if(is_allowed_to_use_pcap()) {
         plan tests => $total * 19 * 2 + 23
@@ -28,7 +27,7 @@ $pcap = Net::Pcap::open_live($dev, 1024, 1, 0, \$err);
 SKIP: {
     skip "Test::Exception not available", 2 unless $has_test_exception;
 
-    # dump_open() errors
+    # open_offline() errors
     throws_ok(sub {
         Net::Pcap::open_offline()
     }, '/^Usage: Net::Pcap::open_offline\(fname, err\)/', 

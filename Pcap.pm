@@ -20,7 +20,7 @@ use AutoLoader;
 use Carp;
 
 {   no strict;
-    $VERSION = '0.08';
+    $VERSION = '0.09';
 
     @ISA = qw(Exporter DynaLoader);
 
@@ -936,6 +936,16 @@ Bo Adler (BOADLER) E<lt>thumper@alumni.caltech.eduE<gt>
 Peter Lister (PLISTER) E<lt>p.lister@cranfield.ac.ukE<gt>
 
 =back
+
+
+=head1 ACKNOWLEDGEMENTS
+
+To Paul Johnson for his module C<Devel::Cover> and his patience for 
+helping me using it with XS code, which revealed very useful for 
+writing more tests. 
+
+To Jean-Louis Morel, Max Maischen, Philippe Bruhat, David Morel and 
+Scott Lanning for their beta-tests.
 
 
 =head1 COPYRIGHT

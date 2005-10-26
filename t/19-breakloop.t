@@ -1,17 +1,20 @@
 #!/usr/bin/perl -T
 use strict;
-use Socket;
 use Test::More;
+use lib 't';
+use Utils;
 my $total;  # number of packets to process
 BEGIN {
     $total = 10;
-    use lib 't';
-    require 'CheckAuth.pl';
 
-    if(is_allowed_to_use_pcap()) {
-        plan tests => 5
+    if(is_available('pcap_breakloop')) {
+        if(is_allowed_to_use_pcap()) {
+            plan tests => 5
+        } else {
+            plan skip_all => "must be run as root"
+        }
     } else {
-        plan skip_all => "must be run as root"
+        plan skip_all => "pcap_breakloop() is not available"
     }
 }
 use Net::Pcap;

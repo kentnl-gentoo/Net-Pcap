@@ -1,12 +1,11 @@
 #!/usr/bin/perl -T
 use strict;
-use Socket;
 use Test::More;
+use lib 't';
+use Utils;
 my $total;  # number of packets to process
 BEGIN {
     $total = 10;
-    use lib 't';
-    require 'CheckAuth.pl';
 
     if(is_allowed_to_use_pcap()) {
         plan tests => $total * 22 + 20
@@ -72,17 +71,20 @@ SKIP: {
     }, '/^p is not of type pcap_dumper_tPtr/', 
        "calling dump_file() with incorrect argument type");
 
-    # dump_flush() errors
-    throws_ok(sub {
-        Net::Pcap::dump_flush()
-    }, '/^Usage: Net::Pcap::dump_flush\(p\)/', 
-       "calling dump_flush() with no argument");
+    SKIP: {
+        skip "pcap_dump_flush() is not available", 2 unless is_available('pcap_dump_flush');
 
-    throws_ok(sub {
-        Net::Pcap::dump_flush(0)
-    }, '/^p is not of type pcap_dumper_tPtr/', 
-       "calling dump_flush() with incorrect argument type");
+        # dump_flush() errors
+        throws_ok(sub {
+            Net::Pcap::dump_flush()
+        }, '/^Usage: Net::Pcap::dump_flush\(p\)/', 
+            "calling dump_flush() with no argument");
 
+        throws_ok(sub {
+            Net::Pcap::dump_flush(0)
+        }, '/^p is not of type pcap_dumper_tPtr/', 
+            "calling dump_flush() with incorrect argument type");
+    }
 }
 
 # Testing dump_open()
@@ -139,10 +141,13 @@ sub process_packet {
     eval { Net::Pcap::dump($dumper, $header, $packet) };
     is(   $@,   '', "dump()");
 
-    my $r;
-    eval { $r = Net::Pcap::dump_flush($dumper) };
-    is(   $@,   '', "dump_flush()");
-    is( $r, 0, " - result: $r" );
+    SKIP: {
+        skip "pcap_dump_flush() is not available", 2 unless is_available('pcap_dump_flush');
+        my $r;
+        eval { $r = Net::Pcap::dump_flush($dumper) };
+        is(   $@,   '', "dump_flush()");
+        is( $r, 0, " - result: $r" );
+    }
 
     $size += $header->{caplen};
     $count++;

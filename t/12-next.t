@@ -1,12 +1,11 @@
 #!/usr/bin/perl -T
 use strict;
-use Socket;
-use Test::More ;#skip_all => "this script is sloooooooooow";
+use Test::More skip_all => "slowness and random failures... testing pcap_next() is a PITA";
+use lib 't';
+use Utils;
 my $total;  # number of packets to process
 BEGIN {
     $total = 3;
-    use lib 't';
-    require 'CheckAuth.pl';
 
     if(is_allowed_to_use_pcap()) {
         plan tests => $total * 16 + 4

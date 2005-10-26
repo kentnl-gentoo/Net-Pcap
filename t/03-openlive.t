@@ -1,11 +1,9 @@
 #!/usr/bin/perl -T
 use strict;
-use Socket;
 use Test::More;
+use lib 't';
+use Utils;
 BEGIN {
-    use lib 't';
-    require 'CheckAuth.pl';
-
     if(is_allowed_to_use_pcap()) {
         plan tests => 14
     } else {
@@ -64,12 +62,16 @@ is(   $@,   '', "close()" );
 is(   $err, '', " - \$err must be null: $err" ); $err = '';
 
 # Testing open_live() with fake device name
-eval { $pcap = Net::Pcap::open_live('this is not a device', 1024, 1, 0, \$err) };
+my $fakedev = 'this is not a device';
+eval { $pcap = Net::Pcap::open_live($fakedev, 1024, 1, 0, \$err) };
 is(   $@,   '', "open_live()" );
 if($^O eq 'MSWin32' or $^O eq 'cygwin') {
-    like( $err, '/^Error opening adapter:/', " - \$err must be set: $err" ); $err = '';
+    like( $err, '/^Error opening adapter:/', " - \$err must be set: $err" );
+} elsif($^O eq 'darwin') {
+    like( $err, '/^BIOCSETIF: $fakedev: Device not configured/', " - \$err must be set: $err" );
 } else {
-    like( $err, '/^ioctl: (?:No such device)/', " - \$err must be set: $err" ); $err = '';
+    like( $err, '/^ioctl: (?:No such device)/', " - \$err must be set: $err" );
 }
 is( $pcap, undef, " - \$pcap isn't defined" );
+$err = '';
 

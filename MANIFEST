@@ -12,7 +12,7 @@ macros.sh
 fallback/const-c.inc
 fallback/const-xs.inc
 stubs.inc
-t/CheckAuth.pl
+t/Utils.pm
 t/00-load.t
 t/01-api.t
 t/02-lookup.t

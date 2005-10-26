@@ -9,14 +9,13 @@ if ($^O eq 'MSWin32') {
     $config{DEFINE}  = '-DWINSOCK2_H_REQUESTED -D_WINPCAP';
 
 } elsif ($^O eq 'cygwin') {
-    #$config{CCFLAGS} = '-Wall';
+    $config{CCFLAGS} = '-Wall';
     $config{LIBS}    = '-lwpcap';
     $config{DEFINE}  = '-D_WINPCAP -D_CYGWIN';
 
 } else {
-    #$config{CCFLAGS} = '-Wall';
-    $config{INC}     = '-I/usr/local/include';
-    $config{LIBS}    = '-L/usr/local/lib -lpcap';
+    $config{CCFLAGS} = '-Wall';
+    $config{LIBS}    = '-lpcap';
 }
 
 for my $arg (@ARGV) {
@@ -34,14 +33,17 @@ win32_sys_socket_patch() if $is_Win32;
 #      with no argument.
 if ($has_Win32) { # ActivePerl, Cygwin
     die <<"REASON" unless have_library('wpcap', 'blank', 'pcap');
+        - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 The WinPcap driver is not installed on this machine. \a
 
 Please get and install the WinPcap driver and DLLs (auto-installer) from
   http://www.winpcap.org/install/
+        - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 REASON
 
-    die <<"REASON" unless have_library('wpcap', 'pcap_lib_version', 'pcap');
-You appear to lack the WinPcap library. \a
+    warn <<"REASON" unless have_library('wpcap', 'pcap_lib_version', 'pcap');
+        - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+You appear to lack the WinPcap developer pack. \a
 
 If it is installed in a non-standard location, please try setting the LIBS 
 and INC values on the command line.  For instance, if you have unziped the 
@@ -51,10 +53,12 @@ developer's pack in C:\\WpdPack, you should execute:
 
 Or get and install the WinPcap developer's pack from
   http://www.winpcap.org/install/
+        - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 REASON
 
 } else { # other systems (Unix)
     die <<"REASON" unless have_library('pcap');
+        - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 You appear to lack the pcap(3) library. \a
 
 If it is installed in a non-standard location, please try setting the LIBS 
@@ -65,20 +69,42 @@ Or get the sources and install the pcap library from http://www.tcpdump.org/
 If you install the pcap library using a system package, make sure to also 
 install the corresponding -devel package, which contains the C headers needed 
 to compile this module. 
+        - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 REASON
 
 
-    die <<"REASON" unless have_library('pcap', 'pcap_lib_version');
+    warn <<"REASON" unless have_library('pcap', 'pcap_lib_version');
+        - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 You appear to have an old version of the pcap library. \a
 
-This module need a recent version of the pcap library in order to be compiled. 
-Please get the sources and install it from http://www.tcpdump.org/
+This module need a recent version of the pcap library in order to provide 
+access to all its features. You can still compile it with your old pcap 
+library but some functions won't be available, and trying to use them in 
+Perl programs will generate errors. Programs only using the old functions 
+should perform as previously. If not, don't hesitate to fill a bug. 
+
+You can get the latest sources of the pcap library at http://www.tcpdump.org/
 
 If you install the pcap library using a system package, make sure to also 
 install the corresponding -devel package, which contains the C headers needed 
 to compile this module. 
+        - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 REASON
 }
+
+# Now trying to detect which functions are actually available. 
+# We have to do this because the pcap library still doesn't have any macro 
+# to identify its API version and the pcap_lib_version() is only available 
+# since version 0.8 or so. Therefore we add defines in order to replace 
+# missing functions with croaking stubs. 
+# We also store the list of available functions in a file for skipping the 
+# corresponding tests. 
+my @funcs = detect_available_functions();
+$config{DEFINE} .= list_to_defines(@funcs);
+open(FUNCS, '>funcs.txt') or warn "can't write 'funcs.txt': $!\n";
+print FUNCS join("\n", @funcs), "\n";
+close(FUNCS);
+
 
 WriteMakefile(
 	'NAME'             => 'Net::Pcap',
@@ -135,7 +161,7 @@ if(eval {require ExtUtils::Constant; 1}) {
             XS_FILE      => 'const-xs.inc',
     );
 
-    open(MACROS, '>macros.all');
+    open(MACROS, '>macros.all') or warn "can't write 'macros.all': $!\n";
     print MACROS join $/, @names;
     close(MACROS);
 
@@ -314,6 +340,9 @@ print $cfile <<EOT;
 #ifdef __cplusplus
 extern "C" {
 #endif
+#ifdef _WIN32
+#include <malloc.h>
+#endif
 #include <EXTERN.h>
 #include <perl.h>
 #include <XSUB.h>
@@ -388,16 +417,24 @@ sub have_library {
 
         if ($is_Win32) {
             $result = try_link(<<"SRC",undef );
+#ifdef _CYGWIN
 #include <windows.h>
-#include <winsock.h>
+#endif
+#ifdef _WIN32
+#include <malloc.h>
+#endif
 #include <${header}.h>
 blank() { return 0; }
 int t() { ${func}(); return 0; }
 SRC
             unless ($result) {
                 $result = try_link(<<"SRC", undef);
+#ifdef _CYGWIN
 #include <windows.h>
-#include <winsock.h>
+#endif
+#ifdef _WIN32
+#include <malloc.h>
+#endif
 #include <${header}.h>
 blank() { return 0; }
 int t() { void ((*p)()); p = (void ((*)()))${func}; return 0; }
@@ -420,6 +457,12 @@ SRC
 
         } else {
             $result = try_link(<<"SRC", undef);
+#ifdef _CYGWIN
+#include <windows.h>
+#endif
+#ifdef _WIN32
+#include <malloc.h>
+#endif
 #include <${header}.h>
 blank() { return 0; }
 SRC
@@ -437,4 +480,60 @@ SRC
 
     print "yes\n";
     return 1;
+}
+
+# old functions are hard-coded for libpcap, but you get the idea
+sub detect_available_functions {
+    my @defines = ();
+    my %old_func = map { $_ => 1 } qw(
+        pcap_lookupdev  pcap_lookupnet  pcap_open_live  pcap_open_offline
+        pcap_close      pcap_loop       pcap_dispatch   pcap_next   pcap_stats
+        pcap_compile    pcap_freecode   pcap_setfilter  pcap_datalink
+        pcap_dump_open  pcap_dump_close pcap_dump       pcap_file   pcap_fileno
+        pcap_snapshot   pcap_is_swapped pcap_major_version      pcap_minor_version
+        pcap_perror     pcap_strerror   pcap_geterr
+    );
+
+    print "trying to detect actually available functions... ";
+
+    # create a file that include pcap.h
+    my $header = 'find-funcs.h';
+    my $preprocessed = 'cpp-out.h';
+    open(HEADER, ">$header") 
+        or warn "Can't write basic header ($!). Skipping functions detection.\n" 
+        and return '';
+    print HEADER "#include <pcap.h>\n";
+    close(HEADER);
+
+    # now preprocess this header
+    # Unfortunately, this is not very portable right now because there is 
+    # no Config stuff for calling the C preprocessor on files. And calling 
+    # it using stdin/stdout means pipes, hence even harder to do it in 
+    # a sane and portable way. Yuck!
+    if($is_Win32) { # ActiveState
+        eval { xsystem("$Config{cpprun} -P $config{INC} $Config{cppflags} $header") };
+        (my $ppiname = $header) =~ s/\.h$/.i/;
+        rename $ppiname, $preprocessed;
+    } else { # Unix and Cygwin
+        eval { xsystem("$Config{cpprun} $config{INC} $Config{cppflags} -o $preprocessed $header") };
+    }
+    die "\nerror: $@\n" if $@;
+
+    # now parse the output file
+    open(CPP, $preprocessed) 
+        or warn "Can't read file '$preprocessed' ($!). Skipping functions detection\n"
+        and return '';
+    while(<CPP>) {
+        /(pcap_\w+)\s*\(/ and not $old_func{$1} and push @defines, $1
+    }
+    close(CPP);
+
+    unlink($header,$preprocessed);
+
+    print "ok\n";
+    return @defines
+}
+
+sub list_to_defines {
+    return join '', sort map { " -DHAVE_\U$_" } @_
 }

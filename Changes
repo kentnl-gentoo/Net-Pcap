@@ -1,5 +1,20 @@
 The (quite complex) revision history for Net-Pcap
 
+2005.10.26 - 0.09 - Sebastien Aperghis-Tramoni (SAPER)
+  - [BUGFIX] Restored compatibility with older versions of libpcap, namely the 
+    traditional ones founds on BSD systems. 
+  - [FEATURE] Added Microsoft Visual C++ 7 compatibility, thanks to Max Maischen 
+    and Jean-Louis Morel.
+  - [CODE] Added new detection routines for looking which functions are actually 
+    available on the host system.
+  - [CODE] Upgraded to Devel::PPPort 3.06_03
+  - [TESTS] Renamed t/CheckAuth.pm to t/Utils.pm, added function is_available().
+  - [TESTS] Changed the way the test utility module is loaded.
+  - [TESTS] Updated several test files so they skip the tests that depend on 
+    a function that may be unavailable.
+  - [TESTS] Fixes several corner cases thanks to the benevolent testing of 
+    Philippe Bruhat, David Morel and Scott Lanning.
+
 2005.10.05 - 0.08 - Sebastien Aperghis-Tramoni (SAPER)
   - [BUGFIX] RT#6320: loop() conflicts with alarm(). Thanks to Rafaël Garcia-Suarez 
     for the patch. Also applied to dispatch() and next().

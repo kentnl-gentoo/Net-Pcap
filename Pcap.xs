@@ -19,43 +19,31 @@ extern "C" {
 #include <windows.h>
 #endif
 
+#ifdef _WIN32
+#include <malloc.h>
+#endif
+
 #include "EXTERN.h"
 #include "perl.h"
 #include "XSUB.h"
 
+#define NEED_PL_signals 1
+#define NEED_sv_2pv_nolen 1
 #include "ppport.h"
 
-#ifndef _WIN32
-#include <signal.h>
-#endif
-
 #include <pcap.h>
-#include <pcap-bpf.h>
-
-#include "const-c.inc"
 
 #ifdef _WINPCAP
 #include <Win32-Extensions.h>
 #endif
 
-
-/* Compatibility with older Perl. Should be added to ppport.h */
-#ifndef PERL_SIGNALS_UNSAFE_FLAG
-static U32  PL_signals = 0;
-#define PERL_SIGNALS_UNSAFE_FLAG    0x0001
-#endif
-
-#ifndef XSprePUSH
-#define XSprePUSH (sp = PL_stack_base + ax - 1)
-#endif
+#include "const-c.inc"
+#include "stubs.inc"
 
 #ifdef __cplusplus
 }
 #endif
 
-
-#define FUNCTION_NOT_IMPLEMENTED_ERROR(func)  \
-    croak("The function " #func "() is not available in your release of the pcap library."); 
 
 /* Wrapper for callback function */
 
@@ -113,7 +101,7 @@ pcap_lookupdev(err)
 #ifdef _WINPCAP
 			{
 				int length = lstrlenW((PWSTR)RETVAL) + 2;
-				char *r = safemalloc(length);  // Conversion from Unicode to ANSI
+				char *r = safemalloc(length);  /* Conversion from Unicode to ANSI */
 				WideCharToMultiByte(CP_ACP, 0, (PWSTR)RETVAL, -1, r, length, NULL, NULL);	
 				lstrcpyA(RETVAL, r);
 				safefree(r);
@@ -166,6 +154,7 @@ pcap_lookupnet(device, net, mask, err)
 			safefree(errbuf);
 
 		} else {
+			RETVAL = -1;
 			if (!SvROK(net )) croak("arg2 not a reference");
 			if (!SvROK(mask)) croak("arg3 not a reference");
 			if (!SvROK(err )) croak("arg4 not a reference");
@@ -188,32 +177,54 @@ pcap_findalldevs_xs(devinfo, err)
     
     PPCODE:
         if ( SvROK(err) && SvROK(devinfo) && (SvTYPE(SvRV(devinfo)) == SVt_PVHV) ) {
+            int r;
             pcap_if_t *alldevs, *d;
             HV *hv;
             SV *err_sv = SvRV(err);
             
             hv = (HV *)SvRV(devinfo);
             
-            if (pcap_findalldevs(&alldevs, errbuf) == 0) {
-                for (d=alldevs; d; d=d->next) {
-                    XPUSHs(sv_2mortal(newSVpv(d->name, 0)));
+            r = pcap_findalldevs(&alldevs, errbuf);
 
-                    if (d->description)
-                        hv_store(hv, d->name, strlen(d->name), newSVpv(d->description, 0), 0);
-                    else
-                        if( (strcmp(d->name,"lo") == 0) || (strcmp(d->name,"lo0") == 0)) 
-                            hv_store(hv, d->name, strlen(d->name), 
-                                    newSVpv("Loopback device", 0), 0);
+            switch(r) {
+                case 0: /* normal case */
+                    for (d=alldevs; d; d=d->next) {
+                        XPUSHs(sv_2mortal(newSVpv(d->name, 0)));
+
+                        if (d->description)
+                            hv_store(hv, d->name, strlen(d->name), newSVpv(d->description, 0), 0);
                         else
-                            hv_store(hv, d->name, strlen(d->name), 
-                                    newSVpv("No description available", 0), 0);
-                }
-        
-                pcap_freealldevs(alldevs);
-                err_sv = &PL_sv_undef;
+                            if( (strcmp(d->name,"lo") == 0) || (strcmp(d->name,"lo0") == 0)) 
+                                hv_store(hv, d->name, strlen(d->name), 
+                                        newSVpv("Loopback device", 0), 0);
+                            else
+                                hv_store(hv, d->name, strlen(d->name), 
+                                        newSVpv("No description available", 0), 0);
+                    }
+            
+                    pcap_freealldevs(alldevs);
+                    err_sv = &PL_sv_undef;
+                    break;
 
-            } else {
-                sv_setpv(err_sv, errbuf);
+                case 3: { /* function is not available */
+                    char *dev = pcap_lookupdev(errbuf);
+
+                    if(dev == NULL) {
+                        sv_setpv(err_sv, errbuf);
+                        break;
+                    }
+
+                    XPUSHs(sv_2mortal(newSVpv(dev, 0)));
+                    if( (strcmp(dev,"lo") == 0) || (strcmp(dev,"lo0") == 0)) 
+                        hv_store(hv, dev, strlen(dev), newSVpv("", 0), 0);
+                    else
+                        hv_store(hv, dev, strlen(dev), newSVpv("No description available", 0), 0);
+                    break;
+                }
+
+                case -1: /* error */
+                    sv_setpv(err_sv, errbuf); 
+                    break;
             }
         } else {
             if ( !SvROK(devinfo) || (SvTYPE(SvRV(devinfo)) != SVt_PVHV) ) 
@@ -236,7 +247,10 @@ pcap_open_live(device, snaplen, promisc, to_ms, err)
 		if (SvROK(err)) {
 			char *errbuf = safemalloc(PCAP_ERRBUF_SIZE+1);
 			SV *err_sv = SvRV(err);
-
+#ifdef _MSC_VER
+            /* Net::Pcap hangs when to_ms == 0 under ActivePerl/MSVC */
+            if(to_ms == 0) to_ms = 1;
+#endif
 			RETVAL = pcap_open_live(device, snaplen, promisc, to_ms, errbuf);
 
 			if (RETVAL == NULL) {

@@ -1,7 +1,8 @@
 #!/usr/bin/perl -T
 use strict;
-use Socket;
 use Test::More;
+use lib 't';
+use Utils;
 BEGIN { plan tests => 10 }
 use Net::Pcap;
 
@@ -19,7 +20,7 @@ is(   $@,   '', "compile() with an invalid filter string" );
 is(   $res, -1, " - result must not be null: $res" );
 eval { $err = Net::Pcap::geterr($pcap) };
 is(   $@,   '', "geterr()" );
-is(   $err, 'syntax error', " - \$err must not be null: $err" );
+like( $err, '/^(?:parse|syntax) error$/', " - \$err must not be null: $err" );
 
 # Testing compile() with a valid filter
 eval { $res = Net::Pcap::compile($pcap, \$filter, "tcp", 0, $mask) };

@@ -1,7 +1,31 @@
+use Socket;
 
 =pod
 
+=head1 NAME
+
+Utils - Utility functions for testing C<Net::Pcap>
+
+=head1 FUNCTIONS
+
 =over 4
+
+=item  B<is_available()>
+
+Returns true if the given function name is available in the version of 
+the pcap library the module is being built against. 
+
+=cut
+
+my %available_func = ();
+open(FUNCS, 'funcs.txt') or warn "can't read 'funcs.txt': $!\n";
+while(my $line = <FUNCS>) { chomp $line; $available_func{$line} = 1; }
+close(FUNCS);
+
+sub is_available {
+    return $available_func{$_[0]}
+}
+
 
 =item B<is_allowed_to_use_pcap()>
 
@@ -9,8 +33,6 @@ Returns true if the user running the test is allowed to use the packet
 capture library. On Unix systems, this function tries to open a raw socket. 
 On Win32 systems (ActivePerl, Cygwin), it just checks whether the user 
 has administrative privileges. 
-
-=back
 
 =cut
 
@@ -33,5 +55,9 @@ sub is_allowed_to_use_pcap {
         }
     }
 }
+
+=back
+
+=cut
 
 1

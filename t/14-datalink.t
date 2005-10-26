@@ -1,12 +1,16 @@
 #!/usr/bin/perl -T
 use strict;
 use File::Spec;
-use Socket;
 use Test::More;
+use lib 't';
+use Utils;
 use Net::Pcap;  # needed before the plan because of the DLT_* constants
 
 my(%name2val,%val2name,%val2descr);
 BEGIN {
+    plan skip_all => "extended datalink related functions are not available"
+        unless is_available('pcap_datalink_name_to_val');
+
     %name2val = (
         undef            => -1, 
         LTalk            => DLT_LTALK, 
@@ -87,9 +91,6 @@ SKIP: {
 }
 
 SKIP: {
-    use lib 't';
-    require 'CheckAuth.pl';
-
     unless(is_allowed_to_use_pcap()) {
         skip "must be run as root", 5
     }

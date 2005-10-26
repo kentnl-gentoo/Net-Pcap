@@ -1,7 +1,14 @@
 #!/usr/bin/perl -T
 use strict;
 use Test::More;
-BEGIN { plan tests => 45 }
+use lib 't';
+use Utils;
+BEGIN {
+    plan skip_all => "pcap_lookupdev() and pcap_findalldevs() don't work as user on FreeBSD"
+        if not is_allowed_to_use_pcap() and $^O eq 'freebsd';
+
+    plan tests => 45
+}
 use Net::Pcap;
 
 eval "use Test::Exception"; my $has_test_exception = !$@;
@@ -28,62 +35,65 @@ SKIP: {
     }, '/^arg1 not a hash ref/', 
        "calling lookupdev() with incorrect argument type");
 
-    # findalldevs() errors
-    throws_ok(sub {
-        Net::Pcap::findalldevs()
-    }, '/^Usage: Net::Pcap::findalldevs\(devinfo, err\)/', 
-       "calling findalldevs() with no argument");
+    SKIP: {
+        skip "pcap_findalldevs() is not available", 11 unless is_available('pcap_findalldevs');
+        # findalldevs() errors
+        throws_ok(sub {
+            Net::Pcap::findalldevs()
+        }, '/^Usage: Net::Pcap::findalldevs\(devinfo, err\)/', 
+           "calling findalldevs() with no argument");
 
-    throws_ok(sub {
-        Net::Pcap::findalldevs(0, 0, 0)
-    }, '/^Usage: Net::Pcap::findalldevs\(devinfo, err\)/', 
-       "calling findalldevs() with too many arguments");
+        throws_ok(sub {
+            Net::Pcap::findalldevs(0, 0, 0)
+        }, '/^Usage: Net::Pcap::findalldevs\(devinfo, err\)/', 
+           "calling findalldevs() with too many arguments");
 
-    throws_ok(sub {
-        Net::Pcap::findalldevs(0)
-    }, '/^Usage: Net::Pcap::findalldevs\(devinfo, err\)/', 
-       "calling 1-arg findalldevs() with incorrect argument type");
+        throws_ok(sub {
+            Net::Pcap::findalldevs(0)
+        }, '/^Usage: Net::Pcap::findalldevs\(devinfo, err\)/', 
+           "calling 1-arg findalldevs() with incorrect argument type");
 
-    throws_ok(sub {
-        Net::Pcap::findalldevs(\%devinfo)
-    }, '/^arg1 not a scalar ref/', 
-       "calling 1-arg findalldevs() with incorrect argument type");
+        throws_ok(sub {
+            Net::Pcap::findalldevs(\%devinfo)
+        }, '/^arg1 not a scalar ref/', 
+           "calling 1-arg findalldevs() with incorrect argument type");
 
-    throws_ok(sub {
-        Net::Pcap::findalldevs(0, 0)
-    }, '/^Usage: Net::Pcap::findalldevs\(devinfo, err\)/', 
-       "calling 2-args findalldevs() with incorrect argument type");
+        throws_ok(sub {
+            Net::Pcap::findalldevs(0, 0)
+        }, '/^Usage: Net::Pcap::findalldevs\(devinfo, err\)/', 
+           "calling 2-args findalldevs() with incorrect argument type");
 
-    throws_ok(sub {
-        Net::Pcap::findalldevs(\@devs, 0)
-    }, '/^arg1 not a hash ref/', 
-       "calling 2-args findalldevs() with incorrect argument type for arg1");
+        throws_ok(sub {
+            Net::Pcap::findalldevs(\@devs, 0)
+        }, '/^arg1 not a hash ref/', 
+           "calling 2-args findalldevs() with incorrect argument type for arg1");
 
-    throws_ok(sub {
-        Net::Pcap::findalldevs(\$err, 0)
-    }, '/^arg2 not a hash ref/', 
-       "calling 2-args findalldevs() with incorrect argument type for arg2");
+        throws_ok(sub {
+            Net::Pcap::findalldevs(\$err, 0)
+        }, '/^arg2 not a hash ref/', 
+           "calling 2-args findalldevs() with incorrect argument type for arg2");
 
-    throws_ok(sub {
-        Net::Pcap::findalldevs(\%devinfo, 0)
-    }, '/^arg2 not a scalar ref/', 
-       "calling 2-args findalldevs() with incorrect argument type for arg2");
+        throws_ok(sub {
+            Net::Pcap::findalldevs(\%devinfo, 0)
+        }, '/^arg2 not a scalar ref/', 
+           "calling 2-args findalldevs() with incorrect argument type for arg2");
 
-    # findalldevs_xs() errors
-    throws_ok(sub {
-        Net::Pcap::findalldevs_xs()
-    }, '/^Usage: Net::Pcap::findalldevs_xs\(devinfo, err\)/', 
-       "calling findalldevs_xs() with no argument");
+        # findalldevs_xs() errors
+        throws_ok(sub {
+            Net::Pcap::findalldevs_xs()
+        }, '/^Usage: Net::Pcap::findalldevs_xs\(devinfo, err\)/', 
+           "calling findalldevs_xs() with no argument");
 
-    throws_ok(sub {
-        Net::Pcap::findalldevs_xs(0, 0)
-    }, '/^arg1 not a hash ref/', 
-       "calling findalldevs_xs() with incorrect argument type for arg1");
+        throws_ok(sub {
+            Net::Pcap::findalldevs_xs(0, 0)
+        }, '/^arg1 not a hash ref/', 
+           "calling findalldevs_xs() with incorrect argument type for arg1");
 
-    throws_ok(sub {
-        Net::Pcap::findalldevs_xs(\%devinfo, 0)
-    }, '/^arg2 not a scalar ref/', 
-       "calling findalldevs_xs() with incorrect argument type for arg2");
+        throws_ok(sub {
+            Net::Pcap::findalldevs_xs(\%devinfo, 0)
+        }, '/^arg2 not a scalar ref/', 
+           "calling findalldevs_xs() with incorrect argument type for arg2");
+    }
 
     # lookupnet() errors
     throws_ok(sub {
@@ -146,25 +156,29 @@ SKIP: {
 }
 
 
-# findalldevs(\%devinfo, \$err), new, correct syntax, consistent with libpcap(3)
-eval { @devs = Net::Pcap::findalldevs(\%devinfo, \$err) };
-is(   $@,   '', "findalldevs() - 2-args form, new, correct syntax, consistent with libpcap(3)" );
-is(   $err, '', " - \$err must be null: $err" ); $err = '';
-ok( @devs >= 1, " - at least one device must be present in the list returned by findalldevs()" );
-ok( keys %devinfo >= 1, " - at least one device must be present in the hash filled by findalldevs()" );
-%devs = map { $_ => 1 } @devs;
-is( $devs{$dev}, 1, " - '$dev' must be present in the list returned by findalldevs()" );
 SKIP: {
-    is( $devinfo{'any'}, 'Pseudo-device that captures on all interfaces', 
-        " - checking pseudo-device description" ) and last if exists $devinfo{'any'};
-    skip "Pseudo-device not available", 1;
-}
-SKIP: {
-    is( $devinfo{'lo' }, 'Loopback device', " - checking loopback device description" ) 
-        and last if exists $devinfo{'lo'};
-    is( $devinfo{'lo0'}, 'Loopback device', " - checking loopback device description" ) 
-        and last if exists $devinfo{'lo0'};
-    skip "Can't predict loopback device description", 1;
+    skip "pcap_findalldevs() is not available", 7 unless is_available('pcap_findalldevs');
+
+    # findalldevs(\%devinfo, \$err), new, correct syntax, consistent with libpcap(3)
+    eval { @devs = Net::Pcap::findalldevs(\%devinfo, \$err) };
+    is(   $@,   '', "findalldevs() - 2-args form, new, correct syntax, consistent with libpcap(3)" );
+    is(   $err, '', " - \$err must be null: $err" ); $err = '';
+    ok( @devs >= 1, " - at least one device must be present in the list returned by findalldevs()" );
+    ok( keys %devinfo >= 1, " - at least one device must be present in the hash filled by findalldevs()" );
+    %devs = map { $_ => 1 } @devs;
+    is( $devs{$dev}, 1, " - '$dev' must be present in the list returned by findalldevs()" );
+    SKIP: {
+        is( $devinfo{'any'}, 'Pseudo-device that captures on all interfaces', 
+            " - checking pseudo-device description" ) and last if exists $devinfo{'any'};
+        skip "Pseudo-device not available", 1;
+    }
+    SKIP: {
+        is( $devinfo{'lo' }, 'Loopback device', " - checking loopback device description" ) 
+            and last if exists $devinfo{'lo'};
+        is( $devinfo{'lo0'}, 'Loopback device', " - checking loopback device description" ) 
+            and last if exists $devinfo{'lo0'};
+        skip "Can't predict loopback device description", 1;
+    }
 }
 
 

@@ -6,8 +6,10 @@ BEGIN {
     if(open(MACROS, 'macros.all')) {
         @names = map {chomp;$_} <MACROS>;
         close(MACROS);
+        plan tests => @names + 3;
+    } else {
+        plan skip_all => "can't read 'macros.all': $!"
     }
-    plan tests => @names + 3;
 }
 use Net::Pcap;
 

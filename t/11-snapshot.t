@@ -1,12 +1,11 @@
 #!/usr/bin/perl -T
 use strict;
-use Socket;
 use Test::More;
+use lib 't';
+use Utils;
 my @sizes;  # snapshot sizes
 BEGIN {
     @sizes = (128, 512, 1024, 2048, 4096, 8192, int(10000*rand), int(10000*rand), int(10000*rand), int(10000*rand));
-    use lib 't';
-    require 'CheckAuth.pl';
 
     if(is_allowed_to_use_pcap()) {
         plan tests => @sizes * 2 + 2
