@@ -2,25 +2,25 @@ use strict;
 use ExtUtils::MakeMaker;
 eval "use ExtUtils::MakeMaker::Coverage";
 
-my($DEBUG,%config,$DEVNULL,$is_Win32,$has_Win32);
+my($DEBUG,%options,$DEVNULL,$is_Win32,$has_Win32);
 
 if ($^O eq 'MSWin32') {
-    $config{LIBS}    = '-lwpcap';
-    $config{DEFINE}  = '-DWINSOCK2_H_REQUESTED -D_WINPCAP';
+    $options{LIBS}    = '-lwpcap';
+    $options{DEFINE}  = '-DWINSOCK2_H_REQUESTED -D_WINPCAP';
 
 } elsif ($^O eq 'cygwin') {
-    $config{CCFLAGS} = '-Wall';
-    $config{LIBS}    = '-lwpcap';
-    $config{DEFINE}  = '-D_WINPCAP -D_CYGWIN';
+    $options{CCFLAGS} = '-Wall';
+    $options{LIBS}    = '-lwpcap';
+    $options{DEFINE}  = '-D_WINPCAP -D_CYGWIN';
 
 } else {
-    $config{CCFLAGS} = '-Wall';
-    $config{LIBS}    = '-lpcap';
+    $options{CCFLAGS} = '-Wall' if $] >= 5.006;
+    $options{LIBS}    = '-lpcap';
 }
 
 for my $arg (@ARGV) {
     my($key,$val) = split /=/, $arg, 2;
-    $config{$key} = length $config{$key} ? "$config{$key} $val" : $val;
+    $options{$key} = length $options{$key} ? "$options{$key} $val" : $val;
 }
 
 # patch ActivePerl CORE/sys/socket.h if necessary
@@ -72,7 +72,6 @@ to compile this module.
         - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 REASON
 
-
     warn <<"REASON" unless have_library('pcap', 'pcap_lib_version');
         - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 You appear to have an old version of the pcap library. \a
@@ -100,25 +99,25 @@ REASON
 # We also store the list of available functions in a file for skipping the 
 # corresponding tests. 
 my @funcs = detect_available_functions();
-$config{DEFINE} .= list_to_defines(@funcs);
+$options{DEFINE} .= list_to_defines(@funcs);
 open(FUNCS, '>funcs.txt') or warn "can't write 'funcs.txt': $!\n";
 print FUNCS join("\n", @funcs), "\n";
 close(FUNCS);
 
 
 WriteMakefile(
-	'NAME'             => 'Net::Pcap',
+    'NAME'             => 'Net::Pcap',
     'AUTHOR'           => 'Sébastien Aperghis-Tramoni <sebastien@aperghis.net>',
-	'DISTNAME'         => 'Net-Pcap',
-	'VERSION_FROM'     => 'Pcap.pm',
-	'ABSTRACT_FROM'    => 'Pcap.pm',
-	'PL_FILES'         => {}, 
-	'PREREQ_PM'        => {
+    'DISTNAME'         => 'Net-Pcap',
+    'VERSION_FROM'     => 'Pcap.pm',
+    'ABSTRACT_FROM'    => 'Pcap.pm',
+    'PL_FILES'         => {}, 
+    'PREREQ_PM'        => {
         'Test::More' => '0.45', 
     },
-	dist => { 'COMPRESS' => "gzip -9f", 'SUFFIX'   => "gz" }, 
-	clean => { FILES => 'Net-Pcap-*' }, 
-    %config,        # appropriate CCFLAFS, LDFLAGS and Define's
+    dist => { 'COMPRESS' => "gzip -9f", 'SUFFIX'   => "gz" }, 
+    clean => { FILES => 'Net-Pcap-*' }, 
+    %options,        # appropriate CCFLAFS, LDFLAGS and Define's
 );
 
 if(eval {require ExtUtils::Constant; 1}) {
@@ -328,8 +327,8 @@ sub backtick {
 sub try_link0 {
     my ($src, $opt) = @_;
     my $cfile = gensym();
-    # local $config{LIBS};
-    # $config{LIBS} .= $opt;
+    # local $options{LIBS};
+    # $options{LIBS} .= $opt;
     unless (mkdir(".testlink", 0777)) {
         rm_fr(".testlink");
         mkdir(".testlink", 0777) || die "Cannot create .testlink dir: $!";
@@ -373,13 +372,13 @@ EOT
     open($cfile, ">Makefile.PL") || die "Cannot write to file Makefile.PL: $!";
     print $cfile <<'EOT';
 use ExtUtils::MakeMaker;
-my %config;
+my %options;
 while($_ = shift @ARGV) {
     my ($k, $v) = split /=/, $_, 2;
     warn("$k = $v\n");
-    $config{$k} = $v;
+    $options{$k} = $v;
 }
-WriteMakefile(NAME => "Conftest", VERSION_FROM => "Conftest.pm", %config);
+WriteMakefile(NAME => "Conftest", VERSION_FROM => "Conftest.pm", %options);
 EOT
     close($cfile);
     open($cfile, ">test.pl") || die "Cannot write to file test.pl: $!";
@@ -389,7 +388,7 @@ use Conftest; \$loaded++;
 EOT
     close($cfile);
     my $quote = $is_Win32 ? '"' : "'";
-    xsystem("$^X Makefile.PL " . join(' ', map { "${quote}$_=$config{$_}${quote}" } keys %config));
+    xsystem("$^X Makefile.PL " . join(' ', map { "${quote}$_=$options{$_}${quote}" } keys %options));
     xsystem("$Config{make} test ${quote}OTHERLDFLAGS=${opt}${quote}");
 } # end try_link0
 
@@ -420,9 +419,6 @@ sub have_library {
 #ifdef _CYGWIN
 #include <windows.h>
 #endif
-#ifdef _WIN32
-#include <malloc.h>
-#endif
 #include <${header}.h>
 blank() { return 0; }
 int t() { ${func}(); return 0; }
@@ -431,9 +427,6 @@ SRC
                 $result = try_link(<<"SRC", undef);
 #ifdef _CYGWIN
 #include <windows.h>
-#endif
-#ifdef _WIN32
-#include <malloc.h>
 #endif
 #include <${header}.h>
 blank() { return 0; }
@@ -460,9 +453,6 @@ SRC
 #ifdef _CYGWIN
 #include <windows.h>
 #endif
-#ifdef _WIN32
-#include <malloc.h>
-#endif
 #include <${header}.h>
 blank() { return 0; }
 SRC
@@ -475,7 +465,7 @@ SRC
     }
 
     if ($func ne "main") {
-        $config{DEFINE} .= uc(" -Dhave_$func");
+        $options{DEFINE} .= uc(" -Dhave_$func");
     }
 
     print "yes\n";
@@ -511,11 +501,11 @@ sub detect_available_functions {
     # it using stdin/stdout means pipes, hence even harder to do it in 
     # a sane and portable way. Yuck!
     if($is_Win32) { # ActiveState
-        eval { xsystem("$Config{cpprun} -P $config{INC} $Config{cppflags} $header") };
+        eval { xsystem("$Config{cpprun} -P $options{INC} $Config{cppflags} $header") };
         (my $ppiname = $header) =~ s/\.h$/.i/;
         rename $ppiname, $preprocessed;
     } else { # Unix and Cygwin
-        eval { xsystem("$Config{cpprun} $config{INC} $Config{cppflags} -o $preprocessed $header") };
+        eval { xsystem("$Config{cpprun} $options{INC} $Config{cppflags} -o $preprocessed $header") };
     }
     die "\nerror: $@\n" if $@;
 

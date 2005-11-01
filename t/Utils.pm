@@ -1,5 +1,7 @@
 use Socket;
 
+$ENV{'LANG'} = $ENV{'LANGUAGE'} = $ENV{'LC_MESSAGES'} = 'C';
+
 =pod
 
 =head1 NAME

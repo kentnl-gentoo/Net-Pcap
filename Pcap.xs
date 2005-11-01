@@ -60,8 +60,8 @@ void callback_wrapper(u_char *user, const struct pcap_pkthdr *h, const u_char *p
 
     hv_store(hdr, "tv_sec", strlen("tv_sec"), newSViv(h->ts.tv_sec), 0);
     hv_store(hdr, "tv_usec", strlen("tv_usec"), newSViv(h->ts.tv_usec), 0);
-    hv_store(hdr, "caplen", strlen("caplen"), newSViv(h->caplen), 0);
-    hv_store(hdr, "len", strlen("len"), newSViv(h->len), 0);	
+    hv_store(hdr, "caplen", strlen("caplen"), newSVuv(h->caplen), 0);
+    hv_store(hdr, "len", strlen("len"), newSVuv(h->len), 0);	
 
     PUSHMARK(sp);
     XPUSHs((SV*)user);
@@ -449,9 +449,9 @@ pcap_next(p, h)
 				hv_store(hv, "tv_usec", strlen("tv_usec"),
 					 newSViv(real_h.ts.tv_usec), 0);
 				hv_store(hv, "caplen", strlen("caplen"),
-					 newSViv(real_h.caplen), 0);
+					 newSVuv(real_h.caplen), 0);
 				hv_store(hv, "len", strlen("len"),
-					 newSViv(real_h.len), 0);	
+					 newSVuv(real_h.len), 0);	
 
 				RETVAL = newSVpv((char *)result, real_h.caplen);
 			} else 
@@ -675,11 +675,11 @@ pcap_stats(p, ps)
 			hv = (HV *)SvRV(ps);
 
 			hv_store(hv, "ps_recv", strlen("ps_recv"), 
-		                 newSViv(real_ps.ps_recv), 0);
+						newSVuv(real_ps.ps_recv), 0);
 			hv_store(hv, "ps_drop", strlen("ps_drop"), 
-			         newSViv(real_ps.ps_drop), 0);
+						newSVuv(real_ps.ps_drop), 0);
 			hv_store(hv, "ps_ifdrop", strlen("ps_ifdrop"), 
-		                 newSViv(real_ps.ps_ifdrop), 0);
+						newSVuv(real_ps.ps_ifdrop), 0);
 
 		} else
             croak("arg2 not a hash ref");

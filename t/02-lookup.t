@@ -4,9 +4,6 @@ use Test::More;
 use lib 't';
 use Utils;
 BEGIN {
-    plan skip_all => "pcap_lookupdev() and pcap_findalldevs() don't work as user on FreeBSD"
-        if not is_allowed_to_use_pcap() and $^O eq 'freebsd';
-
     plan tests => 45
 }
 use Net::Pcap;
@@ -118,50 +115,29 @@ SKIP: {
 }
 
 
-# Testing lookupdev()
-eval { $dev = Net::Pcap::lookupdev(\$err) };
-is(   $@,   '', "lookupdev()" );
-is(   $err, '', " - \$err must be null: $err" ); $err = '';
-isnt( $dev, '', " - \$dev isn't null: '$dev'" );
-
-
-# Testing findalldevs()
-# findalldevs(\$err), legacy from Marco Carnut 0.05
-eval { @devs = Net::Pcap::findalldevs(\$err) };
-is(   $@,   '', "findalldevs() - 1-arg form, legacy from Marco Carnut 0.05" );
-is(   $err, '', " - \$err must be null: $err" ); $err = '';
-ok( @devs >= 1, " - at least one device must be present in the list returned by findalldevs()" );
-%devs = map { $_ => 1 } @devs;
-is( $devs{$dev}, 1, " - '$dev' must be present in the list returned by findalldevs()" );
-
-# findalldevs(\$err, \%devinfo), legacy from Jean-Louis Morel 0.04.02
-eval { @devs = Net::Pcap::findalldevs(\$err, \%devinfo) };
-is(   $@,   '', "findalldevs() - 2-args form, legacy from Jean-Louis Morel 0.04.02" );
-is(   $err, '', " - \$err must be null: $err" ); $err = '';
-ok( @devs >= 1, " - at least one device must be present in the list returned by findalldevs()" );
-ok( keys %devinfo >= 1, " - at least one device must be present in the hash filled by findalldevs()" );
-%devs = map { $_ => 1 } @devs;
-is( $devs{$dev}, 1, " - '$dev' must be present in the list returned by findalldevs()" );
 SKIP: {
-    is( $devinfo{'any'}, 'Pseudo-device that captures on all interfaces', 
-        " - checking pseudo-device description" ) and last if exists $devinfo{'any'};
-    skip "Pseudo-device not available", 1;
-}
-SKIP: {
-    is( $devinfo{'lo' }, 'Loopback device', " - checking loopback device description" ) 
-        and last if exists $devinfo{'lo'};
-    is( $devinfo{'lo0'}, 'Loopback device', " - checking loopback device description" ) 
-        and last if exists $devinfo{'lo0'};
-    skip "Can't predict loopback device description", 1;
-}
+    # Testing lookupdev()
+    eval { $dev = Net::Pcap::lookupdev(\$err) };
+    is(   $@,   '', "lookupdev()" );
+
+    skip "error: $err. Skipping the rest of the tests", 27 if $err eq 'no suitable device found';
+
+    is(   $err, '', " - \$err must be null: $err" ); $err = '';
+    isnt( $dev, '', " - \$dev isn't null: '$dev'" );
 
 
-SKIP: {
-    skip "pcap_findalldevs() is not available", 7 unless is_available('pcap_findalldevs');
+    # Testing findalldevs()
+    # findalldevs(\$err), legacy from Marco Carnut 0.05
+    eval { @devs = Net::Pcap::findalldevs(\$err) };
+    is(   $@,   '', "findalldevs() - 1-arg form, legacy from Marco Carnut 0.05" );
+    is(   $err, '', " - \$err must be null: $err" ); $err = '';
+    ok( @devs >= 1, " - at least one device must be present in the list returned by findalldevs()" );
+    %devs = map { $_ => 1 } @devs;
+    is( $devs{$dev}, 1, " - '$dev' must be present in the list returned by findalldevs()" );
 
-    # findalldevs(\%devinfo, \$err), new, correct syntax, consistent with libpcap(3)
-    eval { @devs = Net::Pcap::findalldevs(\%devinfo, \$err) };
-    is(   $@,   '', "findalldevs() - 2-args form, new, correct syntax, consistent with libpcap(3)" );
+    # findalldevs(\$err, \%devinfo), legacy from Jean-Louis Morel 0.04.02
+    eval { @devs = Net::Pcap::findalldevs(\$err, \%devinfo) };
+    is(   $@,   '', "findalldevs() - 2-args form, legacy from Jean-Louis Morel 0.04.02" );
     is(   $err, '', " - \$err must be null: $err" ); $err = '';
     ok( @devs >= 1, " - at least one device must be present in the list returned by findalldevs()" );
     ok( keys %devinfo >= 1, " - at least one device must be present in the hash filled by findalldevs()" );
@@ -179,18 +155,49 @@ SKIP: {
             and last if exists $devinfo{'lo0'};
         skip "Can't predict loopback device description", 1;
     }
+
+
+    SKIP: {
+        skip "pcap_findalldevs() is not available", 7 unless is_available('pcap_findalldevs');
+
+        # findalldevs(\%devinfo, \$err), new, correct syntax, consistent with libpcap(3)
+        eval { @devs = Net::Pcap::findalldevs(\%devinfo, \$err) };
+        is(   $@,   '', "findalldevs() - 2-args form, new, correct syntax, consistent with libpcap(3)" );
+        is(   $err, '', " - \$err must be null: $err" ); $err = '';
+        ok( @devs >= 1, " - at least one device must be present in the list returned by findalldevs()" );
+        ok( keys %devinfo >= 1, " - at least one device must be present in the hash filled by findalldevs()" );
+        %devs = map { $_ => 1 } @devs;
+        is( $devs{$dev}, 1, " - '$dev' must be present in the list returned by findalldevs()" );
+        SKIP: {
+            is( $devinfo{'any'}, 'Pseudo-device that captures on all interfaces', 
+                " - checking pseudo-device description" ) and last if exists $devinfo{'any'};
+            skip "Pseudo-device not available", 1;
+        }
+        SKIP: {
+            is( $devinfo{'lo' }, 'Loopback device', " - checking loopback device description" ) 
+                and last if exists $devinfo{'lo'};
+            is( $devinfo{'lo0'}, 'Loopback device', " - checking loopback device description" ) 
+                and last if exists $devinfo{'lo0'};
+            skip "Can't predict loopback device description", 1;
+        }
+    }
+
+
+    # Testing lookupnet()
+    eval { $result = Net::Pcap::lookupnet($dev, \$net, \$mask, \$err) };
+    is(   $@,    '', "lookupnet()" );
+
+    SKIP: {
+        skip "error: $err. Skipping lookupnet() tests", 6 if $result == -1;
+
+        is(   $err,  '', " - \$err must be null: $err" ); $err = '';
+        is(  $result, 0, " - \$result must be null: $result" );
+        isnt( $net,  '', " - \$net isn't null: '$net' => ".dotquad($net) );
+        isnt( $mask, '', " - \$mask isn't null: '$mask' => ".dotquad($mask) );
+        like( dotquad($net),  $ip_regexp, " - does \$net look like an IP address?" );
+        like( dotquad($mask), $ip_regexp, " - does \$mask look like an IP address?" );
+    }
 }
-
-
-# Testing lookupnet()
-eval { $result = Net::Pcap::lookupnet($dev, \$net, \$mask, \$err) };
-is(   $@,    '', "lookupnet()" );
-is(   $err,  '', " - \$err must be null: $err" ); $err = '';
-is(  $result, 0, " - \$result must be null: $result" );
-isnt( $net,  '', " - \$net isn't null: '$net' => ".dotquad($net) );
-isnt( $mask, '', " - \$mask isn't null: '$mask' => ".dotquad($mask) );
-like( dotquad($net),  $ip_regexp, " - does \$net look like an IP address ?" );
-like( dotquad($mask), $ip_regexp, " - does \$mask look like an IP address ?" );
 
 
 sub dotquad {

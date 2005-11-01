@@ -68,7 +68,7 @@ is(   $@,   '', "open_live()" );
 if($^O eq 'MSWin32' or $^O eq 'cygwin') {
     like( $err, '/^Error opening adapter:/', " - \$err must be set: $err" );
 } elsif($^O eq 'darwin') {
-    like( $err, '/^BIOCSETIF: $fakedev: Device not configured/', " - \$err must be set: $err" );
+    like( $err, "/^BIOCSETIF: $fakedev: Device not configured/", " - \$err must be set: $err" );
 } else {
     like( $err, '/^ioctl: (?:No such device)/', " - \$err must be set: $err" );
 }

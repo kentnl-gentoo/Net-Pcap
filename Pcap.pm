@@ -20,7 +20,7 @@ use AutoLoader;
 use Carp;
 
 {   no strict;
-    $VERSION = '0.09';
+    $VERSION = '0.10';
 
     @ISA = qw(Exporter DynaLoader);
 
@@ -52,7 +52,7 @@ use Carp;
             PCAP_VERSION_MAJOR  PCAP_VERSION_MINOR
         )], 
         functions => [qw(
-            lookupdev  findalldevs
+            lookupdev  findalldevs  lookupnet
             open_live  open_dead  open_offline pcap_close
             dump_open  pcap_dump  dump_close  dump_file  dump_flush
             dispatch  pcap_next loop  breakloop
@@ -155,7 +155,7 @@ Net::Pcap - Interface to pcap(3) LBL packet capture library
 
 =head1 VERSION
 
-Version 0.08
+Version 0.10
 
 =head1 SYNOPSIS
 
@@ -944,8 +944,8 @@ To Paul Johnson for his module C<Devel::Cover> and his patience for
 helping me using it with XS code, which revealed very useful for 
 writing more tests. 
 
-To Jean-Louis Morel, Max Maischen, Philippe Bruhat, David Morel and 
-Scott Lanning for their beta-tests.
+To the beta-testers: Jean-Louis Morel, Max Maischen, Philippe Bruhat, 
+David Morel, Scott Lanning, Rafael Garcia-Suarez, Karl Y. Pradene.
 
 
 =head1 COPYRIGHT

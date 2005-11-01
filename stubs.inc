@@ -24,10 +24,23 @@ const char * pcap_lib_version(void) {
 #ifdef _MSC_VER
 #pragma message( "Warning: the function pcap_findalldevs() is not available, but will be emulated" )
 #endif
+typedef struct pcap_if pcap_if_t;
+struct pcap_if {
+    struct pcap_if *next;
+    char *name;     /* name to hand to "pcap_open_live()" */
+    char *description;  /* textual description of interface, or NULL */
+    struct pcap_addr *addresses;
+    bpf_u_int32 flags;  /* PCAP_IF_ interface flags */
+};
+
 int pcap_findalldevs(pcap_if_t ** alldevsp, char * errbuf);
 int pcap_findalldevs(pcap_if_t ** alldevsp, char * errbuf) {
-    FUNCTION_NOT_IMPLEMENTED_ERROR(pcap_findalldevs)
     return 3;
+}
+
+void pcap_freealldevs(pcap_if_t * alldevsp);
+void pcap_freealldevs(pcap_if_t * alldevsp) {
+    return;
 }
 #endif
 

@@ -1,5 +1,17 @@
 The (quite complex) revision history for Net-Pcap
 
+2005.11.xx - 0.10 - Sebastien Aperghis-Tramoni (SAPER)
+  - [BUGFIX] lookupnet() wasn't exported by :functions.
+  - [BUGFIX] Fixed findalldevs() emulation.
+  - [BUGFIX] Replaced several newSViv() with newSVuv() to respect the actual 
+    unsigned nature of several fields.
+  - [TESTS] Fixed 03-openlive.t for Darwin/Mac OS X.
+  - [TESTS] RT#15342: lookupnet() fails if the device returned by lookupdev() 
+    has no IP configured. Thanks to 
+  - [TESTS] RT#15343: warnings when running t/14-datalink.t
+  - [TESTS] Fixed another corner case in t/02-lookup.t thanks to Rafael Garcia-Suarez.
+  - [TESTS] t/Utils.pm now sets the environment to C. Thanks to Karl Y. Pradene.
+
 2005.10.26 - 0.09 - Sebastien Aperghis-Tramoni (SAPER)
   - [BUGFIX] Restored compatibility with older versions of libpcap, namely the 
     traditional ones founds on BSD systems. 

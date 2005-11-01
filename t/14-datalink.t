@@ -20,7 +20,7 @@ BEGIN {
         ieee802_11       => DLT_IEEE802_11, 
     );
     %val2name = (
-        undef            => 'NULL', 
+        0                => 'NULL', 
         DLT_LTALK()      => 'LTALK', 
         DLT_RAW()        => 'RAW', 
         DLT_PPP_SERIAL() => 'PPP_SERIAL', 
@@ -28,7 +28,7 @@ BEGIN {
         DLT_IEEE802_11() => 'IEEE802_11', 
     );
     %val2descr = (
-        undef            => 'BSD loopback',  # undef == 0 == DLT_NULL
+        0                => 'BSD loopback', 
         DLT_NULL()       => 'BSD loopback', 
         DLT_LTALK()      => 'Localtalk', 
         DLT_RAW()        => 'Raw IP', 
