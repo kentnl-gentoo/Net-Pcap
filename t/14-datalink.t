@@ -2,43 +2,41 @@
 use strict;
 use File::Spec;
 use Test::More;
+use Net::Pcap;
 use lib 't';
 use Utils;
-use Net::Pcap;  # needed before the plan because of the DLT_* constants
 
 my(%name2val,%val2name,%val2descr);
-BEGIN {
-    plan skip_all => "extended datalink related functions are not available"
-        unless is_available('pcap_datalink_name_to_val');
+plan skip_all => "extended datalink related functions are not available"
+    unless is_available('pcap_datalink_name_to_val');
 
-    %name2val = (
-        undef            => -1, 
-        LTalk            => DLT_LTALK, 
-        raw              => DLT_RAW, 
-        PPP_serial       => DLT_PPP_SERIAL, 
-        SLIP             => DLT_SLIP, 
-        ieee802_11       => DLT_IEEE802_11, 
-    );
-    %val2name = (
-        0                => 'NULL', 
-        DLT_LTALK()      => 'LTALK', 
-        DLT_RAW()        => 'RAW', 
-        DLT_PPP_SERIAL() => 'PPP_SERIAL', 
-        DLT_SLIP()       => 'SLIP', 
-        DLT_IEEE802_11() => 'IEEE802_11', 
-    );
-    %val2descr = (
-        0                => 'BSD loopback', 
-        DLT_NULL()       => 'BSD loopback', 
-        DLT_LTALK()      => 'Localtalk', 
-        DLT_RAW()        => 'Raw IP', 
-        DLT_PPP_SERIAL() => 'PPP over serial', 
-        DLT_SLIP()       => 'SLIP', 
-        DLT_IEEE802_11() => '802.11', 
-    );
-    
-    plan tests => keys(%name2val) * 2 + keys(%val2name) * 2 + keys(%val2descr) * 2 + 23
-}
+%name2val = (
+    undef            => -1, 
+    LTalk            => DLT_LTALK, 
+    raw              => DLT_RAW, 
+    PPP_serial       => DLT_PPP_SERIAL, 
+    SLIP             => DLT_SLIP, 
+    ieee802_11       => DLT_IEEE802_11, 
+);
+%val2name = (
+    0                => 'NULL', 
+    DLT_LTALK()      => 'LTALK', 
+    DLT_RAW()        => 'RAW', 
+    DLT_PPP_SERIAL() => 'PPP_SERIAL', 
+    DLT_SLIP()       => 'SLIP', 
+    DLT_IEEE802_11() => 'IEEE802_11', 
+);
+%val2descr = (
+    0                => 'BSD loopback', 
+    DLT_NULL()       => 'BSD loopback', 
+    DLT_LTALK()      => 'Localtalk', 
+    DLT_RAW()        => 'Raw IP', 
+    DLT_PPP_SERIAL() => 'PPP over serial', 
+    DLT_SLIP()       => 'SLIP', 
+    DLT_IEEE802_11() => '802.11', 
+);
+
+plan tests => keys(%name2val) * 2 + keys(%val2name) * 2 + keys(%val2descr) * 2 + 23;
 
 eval "use Test::Exception"; my $has_test_exception = !$@;
 
@@ -91,12 +89,11 @@ SKIP: {
 }
 
 SKIP: {
-    unless(is_allowed_to_use_pcap()) {
-        skip "must be run as root", 5
-    }
+    skip "must be run as root", 5 unless is_allowed_to_use_pcap();
+    skip "no network device available", 5 unless find_network_device();
 
     # Find a device and open it
-    $dev = Net::Pcap::lookupdev(\$err);
+    $dev = find_network_device();
     $pcap = Net::Pcap::open_live($dev, 1024, 1, 0, \$err);
     isa_ok( $pcap, 'pcap_tPtr', "\$pcap" );
 

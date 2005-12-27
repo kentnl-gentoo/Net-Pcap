@@ -43,18 +43,23 @@ INSTALLATION
 
       - Linux 2.6, gcc 3.4.1
       - FreeBSD 4.7, gcc 2.95.4
+      - Mac OS X 10.4, gcc 4.0
 
     Net::Pcap is compatible with all the versions of the Pcap library, 
     including the old BSD ones and the Windows port WinPcap.
 
-    Net::Pcap should work on any Perl since 5.004_05. The is tested 
-    by the author that it works with the following versions: 
+    Net::Pcap should work on any Perl since 5.004_05. This module has 
+    been tested by the author to check that it works with the following 
+    versions ot Perl: 
 
       - Perl 5.4.5 i686-linux (custom build)
       - Perl 5.5.3 i686-linux (custom build)
       - Perl 5.6.2 i686-linux (custom build)
       - Perl 5.8.5 i386-linux-thread-multi (vendor build)
-      - Perl blead@25763 i686-linux (custom build)
+      - Perl 5.6.1 i386-freebsd (custom build)
+      - Perl 5.8.7 i386-freebsd (custom build)
+      - Perl 5.8.6 darwin (vendor build)
+      - Perl 5.8.7 cygwin-thread-multi-64int (vendor build)
 
     For Perl 5.004, you may need to install ExtUtils::Constant with 
     this patch: 

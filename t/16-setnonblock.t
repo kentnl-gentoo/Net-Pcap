@@ -2,16 +2,13 @@
 use strict;
 use File::Spec;
 use Test::More;
+use Net::Pcap;
 use lib 't';
 use Utils;
-BEGIN {
-    if(is_available('pcap_setnonblock')) {
-        plan tests => 23
-    } else {
-        plan skip_all => "pcap_setnonblock() and pcap_getnonblock() are not available"
-    }
-}
-use Net::Pcap;
+
+plan skip_all => "pcap_setnonblock() and pcap_getnonblock() are not available"
+  unless is_available('pcap_setnonblock');
+plan tests => 23;
 
 eval "use Test::Exception"; my $has_test_exception = !$@;
 
@@ -45,12 +42,11 @@ SKIP: {
 }
 
 SKIP: {
-    unless(is_allowed_to_use_pcap()) {
-        skip "must be run as root", 13
-    }
+    skip "must be run as root", 13 unless is_allowed_to_use_pcap();
+    skip "no network device available", 13 unless find_network_device();
 
     # Find a device and open it
-    $dev = Net::Pcap::lookupdev(\$err);
+    $dev = find_network_device();
     $pcap = Net::Pcap::open_live($dev, 1024, 1, 0, \$err);
     isa_ok( $pcap, 'pcap_tPtr', "\$pcap" );
 

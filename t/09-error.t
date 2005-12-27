@@ -1,15 +1,17 @@
 #!/usr/bin/perl -T
 use strict;
 use Test::More;
+use Net::Pcap;
 use lib 't';
 use Utils;
-BEGIN { plan tests => 10 }
-use Net::Pcap;
+
+plan skip_all => "no network device available" unless find_network_device();
+plan tests => 10;
 
 my($dev,$net,$mask,$pcap,$filter,$res,$err) = ('','','','','','','');
 
 # Find a device and open it
-$dev = Net::Pcap::lookupdev(\$err);
+$dev = find_network_device();
 $res = Net::Pcap::lookupnet($dev, \$net, \$mask, \$err);
 $pcap = Net::Pcap::open_dead(DLT_EN10MB, 1024);
 

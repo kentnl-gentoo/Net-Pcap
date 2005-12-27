@@ -2,10 +2,12 @@
 use strict;
 use File::Spec;
 use Test::More;
+use Net::Pcap;
 use lib 't';
 use Utils;
-BEGIN { plan tests => 15 }
-use Net::Pcap;
+
+plan skip_all => "no network device available" unless find_network_device();
+plan tests => 15;
 
 eval "use Test::Exception"; my $has_test_exception = !$@;
 
@@ -50,11 +52,10 @@ SKIP: {
 }
 
 SKIP: {
-    skip "must be run as root", 5
-        unless is_allowed_to_use_pcap();
+    skip "must be run as root", 5 unless is_allowed_to_use_pcap();
 
     # Find a device and open it
-    $dev = Net::Pcap::lookupdev(\$err);
+    $dev = find_network_device();
     $pcap = Net::Pcap::open_live($dev, 1024, 1, 0, \$err);
     isa_ok( $pcap, 'pcap_tPtr', "\$pcap" );
 

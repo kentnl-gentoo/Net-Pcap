@@ -1,26 +1,22 @@
 #!/usr/bin/perl -T
 use strict;
 use Test::More;
+use Net::Pcap;
 use lib 't';
 use Utils;
-my $total;  # number of packets to process
-BEGIN {
-    $total = 10;
 
-    if(is_allowed_to_use_pcap()) {
-        plan tests => $total * 13 + 4
-    } else {
-        plan skip_all => "must be run as root"
-    }
-}
-use Net::Pcap;
+my $total = 10;  # number of packets to process
+
+plan skip_all => "must be run as root" unless is_allowed_to_use_pcap();
+plan skip_all => "no network device available" unless find_network_device();
+plan tests => $total * 13 + 4;
 
 eval "use Test::Exception"; my $has_test_exception = !$@;
 
 my($dev,$pcap,$dumper,$dump_file,$err) = ('','','','');
 
 # Find a device and open it
-$dev = Net::Pcap::lookupdev(\$err);
+$dev = find_network_device();
 $pcap = Net::Pcap::open_live($dev, 1024, 1, 0, \$err);
 
 # Testing error messages

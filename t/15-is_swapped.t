@@ -2,8 +2,9 @@
 use strict;
 use File::Spec;
 use Test::More;
-BEGIN { plan tests => 5 }
 use Net::Pcap;
+
+plan tests => 5;
 
 my($pcap,$err) = ('','');
 

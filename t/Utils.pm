@@ -58,6 +58,26 @@ sub is_allowed_to_use_pcap {
     }
 }
 
+=item B<find_network_device()>
+
+Returns the name of a device suitable for listening to network traffic.
+
+=cut
+
+my $err;
+my %devs = ();
+my @devs = Net::Pcap::findalldevs(\%devs, \$err);
+
+if(@devs) {
+    while($devs[0] eq 'lo' or $devs[0] eq 'lo0' or $devs[0] =~ /GenericDialupAdapter/) {
+        shift @devs
+    }
+}
+
+sub find_network_device {
+    return wantarray ? @devs : $devs[0]
+}
+
 =back
 
 =cut

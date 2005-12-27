@@ -1,17 +1,12 @@
 #!/usr/bin/perl -T
 use strict;
 use Test::More;
-my @names;
-BEGIN {
-    if(open(MACROS, 'macros.all')) {
-        @names = map {chomp;$_} <MACROS>;
-        close(MACROS);
-        plan tests => @names + 3;
-    } else {
-        plan skip_all => "can't read 'macros.all': $!"
-    }
-}
 use Net::Pcap;
+
+open(MACROS, 'macros.all') or plan skip_all => "can't read 'macros.all': $!";
+my @names = map {chomp;$_} <MACROS>;
+close(MACROS);
+plan tests => @names + 3;
 
 eval "use Test::Exception"; my $has_test_exception = !$@;
 

@@ -1,16 +1,12 @@
 #!/usr/bin/perl -T
 use strict;
 use Test::More;
+use Net::Pcap;
 use lib 't';
 use Utils;
-BEGIN {
-    if(is_available('pcap_open_dead')) {
-        plan tests => 5
-    } else {
-        plan skip_all => "pcap_open_dead() is not available"
-    }
-}
-use Net::Pcap;
+
+plan skip_all => "pcap_open_dead() is not available" unless is_available('pcap_open_dead');
+plan tests => 5;
 
 eval "use Test::Exception"; my $has_test_exception = !$@;
 

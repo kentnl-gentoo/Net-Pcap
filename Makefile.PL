@@ -1,6 +1,8 @@
 use strict;
+use Cwd;
 use ExtUtils::MakeMaker;
 eval "use ExtUtils::MakeMaker::Coverage";
+use File::Spec;
 
 my($DEBUG,%options,$DEVNULL,$is_Win32,$has_Win32);
 
@@ -8,10 +10,14 @@ if ($^O eq 'MSWin32') {
     $options{LIBS}    = '-lwpcap';
     $options{DEFINE}  = '-DWINSOCK2_H_REQUESTED -D_WINPCAP';
 
+    # patch ActivePerl CORE/sys/socket.h
+    win32_sys_socket_patch();
+
 } elsif ($^O eq 'cygwin') {
-    $options{CCFLAGS} = '-Wall';
     $options{LIBS}    = '-lwpcap';
     $options{DEFINE}  = '-D_WINPCAP -D_CYGWIN';
+
+    cygwin_pcap_headers();
 
 } else {
     $options{CCFLAGS} = '-Wall' if $] >= 5.006;
@@ -20,11 +26,9 @@ if ($^O eq 'MSWin32') {
 
 for my $arg (@ARGV) {
     my($key,$val) = split /=/, $arg, 2;
-    $options{$key} = length $options{$key} ? "$options{$key} $val" : $val;
+    $options{$key} = length $options{$key} ? "$val $options{$key}" : $val;
 }
 
-# patch ActivePerl CORE/sys/socket.h if necessary
-win32_sys_socket_patch() if $is_Win32;
 
 # The detection logic is: 
 #   1. first try to check if the pcap library is available; 
@@ -165,8 +169,7 @@ if(eval {require ExtUtils::Constant; 1}) {
     close(MACROS);
 
 } else {
-    use File::Copy;
-    use File::Spec;
+    eval 'use File::Copy';
     foreach my $file ('const-c.inc', 'const-xs.inc') {
         my $fallback = File::Spec->catfile('fallback', $file);
         copy ($fallback, $file) or die "Can't copy $fallback to $file: $!";
@@ -218,6 +221,29 @@ IFDEF
     }
 }
 
+# Cygwin and WinPcap are a *very* special case..
+sub cygwin_pcap_headers {
+    my $incdir = '';
+    my $localinc = File::Spec->catdir(getcwd(), 'include');
+
+    for my $i (0..$#ARGV) {
+        if($ARGV[$i] =~ /^INC=/) {
+            (undef,$incdir) = split /-I/, $ARGV[$i];
+            $ARGV[$i] = "INC=-I$localinc";
+        }
+    }
+
+    eval 'use File::Path';
+    mkpath($localinc);
+
+    eval 'use File::Copy';
+    for my $file (qw(pcap.h pcap-bpf.h pcap-int.h)) {
+        my $orig = File::Spec->catfile($incdir, $file);
+        my $dest = File::Spec->catfile($localinc, $file);
+        copy($orig, $dest);
+    }
+}
+
 # The rest of the code, up to the end of this file, has been copied 
 # from XML::LibXML::Common Makefile.PL, then modified in order to 
 # make all this detection stuff works under Win32
@@ -228,9 +254,7 @@ IFDEF
 ###################################################################
 
 use Config;
-use Cwd;
 use Symbol;
-use File::Spec;
 
 BEGIN {
     eval 'use Win32';

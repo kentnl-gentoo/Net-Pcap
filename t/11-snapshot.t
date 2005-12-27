@@ -1,19 +1,15 @@
 #!/usr/bin/perl -T
 use strict;
 use Test::More;
+use Net::Pcap;
 use lib 't';
 use Utils;
-my @sizes;  # snapshot sizes
-BEGIN {
-    @sizes = (128, 512, 1024, 2048, 4096, 8192, int(10000*rand), int(10000*rand), int(10000*rand), int(10000*rand));
 
-    if(is_allowed_to_use_pcap()) {
-        plan tests => @sizes * 2 + 2
-    } else {
-        plan skip_all => "must be run as root"
-    }
-}
-use Net::Pcap;
+my @sizes = (128, 512, 1024, 2048, 4096, 8192, int(10000*rand), int(10000*rand), int(10000*rand), int(10000*rand));  # snapshot sizes
+
+plan skip_all => "must be run as root" unless is_allowed_to_use_pcap();
+plan skip_all => "no network device available" unless find_network_device();
+plan tests => @sizes * 2 + 2;
 
 eval "use Test::Exception"; my $has_test_exception = !$@;
 
@@ -36,7 +32,7 @@ SKIP: {
 }
 
 # Find a device
-$dev = Net::Pcap::lookupdev(\$err);
+$dev = find_network_device();
 
 for my $size (@sizes) {
     # Open the device

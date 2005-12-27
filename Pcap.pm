@@ -20,7 +20,7 @@ use AutoLoader;
 use Carp;
 
 {   no strict;
-    $VERSION = '0.10';
+    $VERSION = '0.11';
 
     @ISA = qw(Exporter DynaLoader);
 
@@ -155,7 +155,7 @@ Net::Pcap - Interface to pcap(3) LBL packet capture library
 
 =head1 VERSION
 
-Version 0.10
+Version 0.11
 
 =head1 SYNOPSIS
 
@@ -241,7 +241,7 @@ C<fileno()>.
 
 =back
 
-The symbols from the C<datalink> and C<:pcap> tags are exported by default. 
+The symbols from the C<:datalink> and C<:pcap> tags are exported by default. 
 
 
 =head1 FUNCTIONS
@@ -492,7 +492,7 @@ by C<pcap_compile()>.
 =item B<Net::Pcap::setnonblock($pcap, $mode, \$err)>
 
 Set the I<non-blocking> mode of a live capture descriptor, depending on the 
-value of C<$mode> (zero to activate and non-zero to desactivate). It has no 
+value of C<$mode> (zero to activate and non-zero to deactivate). It has no 
 effect on offline descriptors. If there is an error, it returns -1 and sets 
 C<$err>. 
 
@@ -631,8 +631,8 @@ C<Net::Pcap::open_live()>.
 
 =item B<Net::Pcap::is_swapped($pcap)>
 
-This function returns true if the endianess of the currently open
-savefile is different from the endianess of the machine.
+This function returns true if the endianness of the currently open
+savefile is different from the endianness of the machine.
 
 
 =item B<major_version($pcap)>

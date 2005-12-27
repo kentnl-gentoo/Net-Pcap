@@ -1,5 +1,13 @@
 The (quite complex) revision history for Net-Pcap
 
+2005.11.28 - 0.11 - Sebastien Aperghis-Tramoni (SAPER)
+  - [CODE] Added the pcapinfo command.
+  - [DIST] Cygwin installation was simplified and should now Just Work.
+  - [TESTS] Improved the whole test suite to make it use the best device
+    it can find (was needed for Cygwin & Win32).
+  - [DOC] Corrected a few typos thanks to Test::Spelling.
+  - [DOC] Small documentation nits.
+
 2005.11.xx - 0.10 - Sebastien Aperghis-Tramoni (SAPER)
   - [BUGFIX] lookupnet() wasn't exported by :functions.
   - [BUGFIX] Fixed findalldevs() emulation.

@@ -1,8 +1,9 @@
 #!/usr/bin/perl -T
 use strict;
 use Test::More;
-BEGIN { plan tests => 2 }
 use Net::Pcap;
+
+plan tests => 2;
 
 # Testing lib_version()
 my $version = '';

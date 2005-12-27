@@ -1,12 +1,11 @@
 #!/usr/bin/perl -T
 use strict;
 use Test::More;
+use Net::Pcap;
 use lib 't';
 use Utils;
-BEGIN {
-    plan tests => 45
-}
-use Net::Pcap;
+
+plan tests => 45;
 
 eval "use Test::Exception"; my $has_test_exception = !$@;
 
