@@ -1,41 +1,41 @@
 #!/usr/bin/perl -T
 use strict;
+use File::Spec;
 use Test::More;
-use Net::Pcap;
 
-open(MACROS, 'macros.all') or plan skip_all => "can't read 'macros.all': $!";
+my $macrosall = 'macros.all';
+open(MACROS, $macrosall) or plan skip_all => "can't read '$macrosall': $!";
 my @names = map {chomp;$_} <MACROS>;
 close(MACROS);
-plan tests => @names + 3;
+plan tests => @names * 2 + 2;
 
-eval "use Test::Exception"; my $has_test_exception = !$@;
+my $callpack = 'Net::Pcap';
+my $testpack = 'pcap';
+eval "use $callpack";
 
-# Testing error messages
-SKIP: {
-    skip "Test::Exception not available", 1 unless $has_test_exception;
+eval "${callpack}::This()";
+like( $@, "/^This is not a valid $testpack macro/", "trying a non-existing macro");
 
-    # constant() errors
-    throws_ok(sub {
-        Net::Pcap::constant()
-    }, '/^Usage: Net::Pcap::constant\(sv\)/',
-       "calling constant() with no argument");
-}
-
-# Testing constant()
-like( Net::Pcap::constant('This'), 
-    '/^This is not a valid pcap macro/', 
-    "calling constant() with a non existing name" );
-
-like( Net::Pcap::constant('NOSUCHNAME'), 
-    '/^NOSUCHNAME is not a valid pcap macro/', 
-    "calling constant() with a non existing name" );
+eval "${callpack}::NOSUCHNAME()";
+like( $@, "/^NOSUCHNAME is not a valid $testpack macro/", "trying a non-existing macro");
 
 # Testing all macros
 if(@names) {
     for my $name (@names) {
-        like( Net::Pcap::constant($name), 
-              '/^(?:\d+|Your vendor has not defined pcap macro '.$name.', used)$/', 
-              "checking that $name is a number (".Net::Pcap::constant($name).")" );
+        SKIP: {
+            $name =~ /^(\w+)$/ or skip "invalid name '$name'", 2;
+            $name = $1;
+            my $v = eval "${callpack}::$name()";
+
+            if(defined $v and $v =~ /^\d+$/) {
+                is( $@, '', "calling the constant $name as a function" );
+                like( $v, '/^\d+$/', "checking that $name is a number ($v)" );
+
+            } else {
+                like( $@, "/^Your vendor has not defined $testpack macro $name/", 
+                    "calling the constant via its name" );
+                skip "irrelevant test in this case", 1
+            }
+        }
     }
 }
-

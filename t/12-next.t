@@ -1,19 +1,21 @@
 #!/usr/bin/perl -T
 use strict;
-use Test::More skip_all => "slowness and random failures... testing pcap_next() is a PITA";
+use Test::More;
 use Net::Pcap;
 use lib 't';
 use Utils;
 
 my $total = 3;  # number of packets to process
 
+plan skip_all => "slowness and random failures... testing pcap_next() is a PITA";
 plan skip_all => "must be run as root" unless is_allowed_to_use_pcap();
 plan skip_all => "no network device available" unless find_network_device();
-plan tests => $total * 16 + 4;
+plan tests => $total * 16 + 3;
 
 eval "use Test::Exception"; my $has_test_exception = !$@;
 
-my($dev,$pcap,$net,$mask,$filter,$err) = ('','','','','','');
+my($dev,$pcap,$net,$mask,$filter,$data,$r,$err) = ('','','','','','','');
+my %header = ();
 
 # Find a device and open it
 $dev = find_network_device();
@@ -27,7 +29,7 @@ SKIP: {
     # next() errors
     throws_ok(sub {
         Net::Pcap::next()
-    }, '/^Usage: Net::Pcap::next\(p, h\)/', 
+    }, '/^Usage: Net::Pcap::next\(p, pkt_header\)/', 
        "calling next() with no argument");
 
     throws_ok(sub {
@@ -52,7 +54,7 @@ for (1..$total) {
     my($packet, %header);
     eval { $packet = Net::Pcap::next($pcap, \%header) };
     is( $@, '', "next()" );
-    
+
     for my $field (qw(len caplen tv_sec tv_usec)) {
         ok( exists $header{$field}, " - field '$field' is present" );
         ok( defined $header{$field}, " - field '$field' is defined" );

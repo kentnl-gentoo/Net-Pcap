@@ -3,9 +3,11 @@
  *
  * XS wrapper for LBL pcap(3) library.
  *
- * Copyright (C) 2005 Sebastien Aperghis-Tramoni. All rights reserved.
+ * Copyright (C) 2005, 2006 Sebastien Aperghis-Tramoni with code by 
+ *      Jean-Louis Morel. All rights reserved.
  * Copyright (C) 2003 Marco Carnut. All rights reserved. 
  * Copyright (C) 1999 Tim Potter. All rights reserved. 
+ *
  * This program is free software; you can redistribute it and/or modify it 
  * under the same terms as Perl itself.
  *
@@ -33,7 +35,7 @@ extern "C" {
 
 #include <pcap.h>
 
-#ifdef _WINPCAP
+#ifdef _CYGWIN
 #include <Win32-Extensions.h>
 #endif
 
@@ -50,8 +52,8 @@ extern "C" {
 SV *callback_fn;
 
 void callback_wrapper(u_char *user, const struct pcap_pkthdr *h, const u_char *pkt) {
-    SV *packet = newSVpv((u_char *)pkt, h->caplen);
-    HV *hdr = newHV();
+    SV *packet  = newSVpv((u_char *)pkt, h->caplen);
+    HV *hdr     = newHV();
     SV *ref_hdr = newRV_inc((SV*)hdr);
 
     /* Push arguments onto stack */
@@ -98,7 +100,7 @@ pcap_lookupdev(err)
 			SV *err_sv = SvRV(err);
 
 			RETVAL = pcap_lookupdev(errbuf);
-#ifdef _WINPCAP
+#ifdef _WPCAP
 			{
 				int length = lstrlenW((PWSTR)RETVAL) + 2;
 				char *r = safemalloc(length);  /* Conversion from Unicode to ANSI */
@@ -422,12 +424,12 @@ pcap_loop(p, cnt, callback, user)
 
 
 SV *
-pcap_next(p, h)
+pcap_next(p, pkt_header)
 	pcap_t *p
-	SV *h
+	SV *pkt_header
 
 	CODE:
-		if (SvROK(h) && (SvTYPE(SvRV(h)) == SVt_PVHV)) {
+		if (SvROK(pkt_header) && (SvTYPE(SvRV(pkt_header)) == SVt_PVHV)) {
 			struct pcap_pkthdr real_h;
 			const u_char *result;
 			U32 SAVE_signals;
@@ -440,41 +442,83 @@ pcap_next(p, h)
 			result = pcap_next(p, &real_h);
 			PL_signals = SAVE_signals;
 
-			hv = (HV *)SvRV(h);	
+			hv = (HV *)SvRV(pkt_header);	
 	
 			if (result != NULL) {
-
-				hv_store(hv, "tv_sec", strlen("tv_sec"),
-					 newSViv(real_h.ts.tv_sec), 0);
-				hv_store(hv, "tv_usec", strlen("tv_usec"),
-					 newSViv(real_h.ts.tv_usec), 0);
-				hv_store(hv, "caplen", strlen("caplen"),
-					 newSVuv(real_h.caplen), 0);
-				hv_store(hv, "len", strlen("len"),
-					 newSVuv(real_h.len), 0);	
+				hv_store(hv, "tv_sec",  strlen("tv_sec"),  newSViv(real_h.ts.tv_sec),  0);
+				hv_store(hv, "tv_usec", strlen("tv_usec"), newSViv(real_h.ts.tv_usec), 0);
+				hv_store(hv, "caplen",  strlen("caplen"),  newSVuv(real_h.caplen),     0);
+				hv_store(hv, "len",     strlen("len"),     newSVuv(real_h.len),        0);	
 
 				RETVAL = newSVpv((char *)result, real_h.caplen);
+
 			} else 
 				RETVAL = &PL_sv_undef;
 
 		} else
             croak("arg2 not a hash ref");	
 
-	OUTPUT:
-	        h
-		RETVAL     
+    OUTPUT:
+        pkt_header
+        RETVAL     
+
+
+int
+pcap_next_ex(p, pkt_header, pkt_data)
+    pcap_t *p
+    SV *pkt_header
+    SV *pkt_data
+
+    CODE:
+        /* Check if pkt_header is a hashref and pkt_data a scalarref */
+        if (SvROK(pkt_header) && (SvTYPE(SvRV(pkt_header)) == SVt_PVHV) && SvROK(pkt_data)) {
+
+			struct pcap_pkthdr *header;
+			const u_char *data;
+			U32 SAVE_signals;
+			HV *hv;
+
+			memset(&header, '\0', sizeof(header));
+
+			SAVE_signals = PL_signals;  /* Allow the call to be interrupted by signals */
+			PL_signals |= PERL_SIGNALS_UNSAFE_FLAG;
+			RETVAL = pcap_next_ex(p, &header, &data);
+			PL_signals = SAVE_signals;
+
+			hv = (HV *)SvRV(pkt_header);	
+
+			if (RETVAL == 1) {
+                hv_store(hv, "tv_sec",  strlen("tv_sec"),  newSViv(header->ts.tv_sec),  0);
+                hv_store(hv, "tv_usec", strlen("tv_usec"), newSViv(header->ts.tv_usec), 0);
+                hv_store(hv, "caplen",  strlen("caplen"),  newSVuv(header->caplen),     0);
+                hv_store(hv, "len",     strlen("len"),     newSVuv(header->len),        0);	
+
+				pkt_data = newSVpv(data, header->caplen);
+            }
+
+        } else {
+            RETVAL = -1;
+            if (!SvROK(pkt_header) || (SvTYPE(SvRV(pkt_header)) != SVt_PVHV))
+                croak("arg2 not a hash ref");
+            if (!SvROK(pkt_data))
+                croak("arg3 not a scalar ref");
+        }
+
+    OUTPUT:
+        pkt_header
+        pkt_data
+        RETVAL
 
 
 void 
-pcap_dump(p, h, sp)
+pcap_dump(p, pkt_header, sp)
 	pcap_dumper_t *p
-	SV *h
+	SV *pkt_header
 	SV *sp
 
 	CODE:
-		/* Check h (packet header) is a hashref */
-
-		if (SvROK(h) && (SvTYPE(SvRV(h)) == SVt_PVHV)) {
+		/* Check if pkt_header is a hashref */
+		if (SvROK(pkt_header) && (SvTYPE(SvRV(pkt_header)) == SVt_PVHV)) {
 		        struct pcap_pkthdr real_h;
 			char *real_sp;
 			HV *hv;
@@ -483,8 +527,7 @@ pcap_dump(p, h, sp)
 			memset(&real_h, '\0', sizeof(real_h));
 
 			/* Copy from hash to pcap_pkthdr */
-
-			hv = (HV *)SvRV(h);
+			hv = (HV *)SvRV(pkt_header);
 
 			sv = hv_fetch(hv, "tv_sec", strlen("tv_sec"), 0);
 			if (sv != NULL) {
@@ -509,9 +552,8 @@ pcap_dump(p, h, sp)
 			real_sp = SvPV(sp, PL_na);
 
 			/* Call pcap_dump() */
-
 			pcap_dump((u_char *)p, &real_h, real_sp);
-		
+
 		} else
             croak("arg2 not a hash ref");
 
@@ -519,7 +561,7 @@ pcap_dump(p, h, sp)
 int 
 pcap_compile(p, fp, str, optimize, mask)
 	pcap_t *p
-	SV *fp;
+	SV *fp
 	char *str
 	int optimize
 	bpf_u_int32 mask
@@ -527,11 +569,8 @@ pcap_compile(p, fp, str, optimize, mask)
 	CODE:
 		if (SvROK(fp)) {
 			struct bpf_program *real_fp = safemalloc(sizeof(struct bpf_program));
-
 			*(pcap_geterr(p)) = '\0';   /* reset error string */
-
 			RETVAL = pcap_compile(p, real_fp, str, optimize, mask);
-
 			sv_setref_pv(SvRV(fp), "struct bpf_programPtr", (void *)real_fp);
 
 		} else
@@ -540,6 +579,29 @@ pcap_compile(p, fp, str, optimize, mask)
 	OUTPUT:
 		fp
 		RETVAL
+
+
+int
+pcap_compile_nopcap(snaplen, linktype, fp, str, optimize, mask)
+    int snaplen
+    int linktype
+	SV *fp
+	char *str
+	int optimize
+	bpf_u_int32 mask
+
+    CODE:
+		if (SvROK(fp)) {
+			struct bpf_program *real_fp = safemalloc(sizeof(struct bpf_program));
+			RETVAL = pcap_compile_nopcap(snaplen, linktype, real_fp, str, optimize, mask);
+			sv_setref_pv(SvRV(fp), "struct bpf_programPtr", (void *)real_fp);
+
+		} else
+			croak("arg3 not a reference");
+
+    OUTPUT:
+        fp
+        RETVAL
 
 
 int 
@@ -655,6 +717,11 @@ pcap_fileno(p)
 
 
 int
+pcap_get_selectable_fd(p)
+	pcap_t *p
+
+
+int
 pcap_stats(p, ps)
 	pcap_t *p;
 	SV *ps;
@@ -686,4 +753,292 @@ pcap_stats(p, ps)
 
 	OUTPUT:
 		RETVAL
+
+
+int
+pcap_createsrcstr(source, type, host, port, name, err)
+    SV *    source 
+    int     type  
+    char *  host 
+    char *  port  
+    char *  name
+    SV *    err
+
+    CODE:
+        if (SvROK(source) && SvROK(err)) {
+            char *errbuf = safemalloc(PCAP_ERRBUF_SIZE);
+            char *sourcebuf = safemalloc(PCAP_BUF_SIZE);
+            SV *err_sv = SvRV(err);
+            SV *source_sv = SvRV(source);
+
+            RETVAL = pcap_createsrcstr(sourcebuf, type, host, port, name, errbuf);
+
+            if (RETVAL != -1) {
+                sv_setpv(source_sv, sourcebuf);
+                err_sv = &PL_sv_undef;
+            } else {
+                sv_setpv(err_sv, errbuf);
+            }
+
+            safefree(errbuf);
+            safefree(sourcebuf);
+
+        } else {
+            RETVAL = -1;
+            if (!SvROK(source)) croak("arg1 not a reference");
+            if (!SvROK(err)) croak("arg6 not a reference");
+        }
+
+    OUTPUT:
+        source
+        err
+        RETVAL
+
+
+int
+pcap_parsesrcstr(source, type, host, port, name, err)
+    char * source  
+    SV *   type 
+    SV *   host 
+    SV *   port  
+    SV *   name 
+    SV *   err 
+
+    CODE:
+        if ( !SvROK(type) ) croak("arg2 not a reference");   
+        if ( !SvROK(host) ) croak("arg3 not a reference");  
+        if ( !SvROK(port) ) croak("arg4 not a reference");
+        if ( !SvROK(name) ) croak("arg5 not a reference");
+
+        if ( !SvROK(err) )
+            croak("arg6 not a reference");
+
+        else {  
+            int rtype;
+            char *hostbuf = safemalloc(PCAP_BUF_SIZE);
+            char *portbuf = safemalloc(PCAP_BUF_SIZE);
+            char *namebuf = safemalloc(PCAP_BUF_SIZE);
+            char *errbuf  = safemalloc(PCAP_ERRBUF_SIZE);
+            SV *type_sv = SvRV(type);
+            SV *host_sv = SvRV(host);
+            SV *port_sv = SvRV(port);
+            SV *name_sv = SvRV(name);    
+            SV *err_sv = SvRV(err);    
+
+            RETVAL = pcap_parsesrcstr(source, &rtype, hostbuf, portbuf, namebuf, errbuf);
+
+            if (RETVAL != -1) {
+                sv_setiv(type_sv, rtype);
+                sv_setpv(host_sv, hostbuf);
+                sv_setpv(port_sv, portbuf);
+                sv_setpv(name_sv, namebuf);				
+                err_sv = &PL_sv_undef;
+            } else {
+                sv_setpv(err_sv, errbuf);
+            }
+
+            safefree(hostbuf);
+            safefree(portbuf);
+            safefree(namebuf);
+            safefree(errbuf);
+        }
+
+    OUTPUT:
+        type
+        host
+        port
+        name
+        err
+        RETVAL
+
+
+pcap_t *
+pcap_open(source, snaplen, flags, read_timeout, auth, err)
+    char *source
+    int snaplen
+    int flags
+    int read_timeout
+    SV *auth
+    SV *err
+
+    CODE:
+        if (!SvROK(err))
+            croak("arg6 not a reference");
+
+        if ( !SvOK(auth) || (SvOK(auth) && SvROK(auth) && (SvTYPE(SvRV(auth)) == SVt_PVHV)) ) {
+            struct pcap_rmtauth real_auth;
+            struct pcap_rmtauth * preal_auth;
+            char *errbuf = safemalloc(PCAP_ERRBUF_SIZE);
+            SV *err_sv = SvRV(err);
+
+            if (!SvOK(auth)) {      /* if auth (struct pcap_rmtauth) is undef */
+                preal_auth = NULL;
+
+            } else {                    /* auth (struct pcap_rmtauth) is a hashref */  
+                HV *hv;
+                SV **sv;
+
+                memset(&real_auth, '\0', sizeof(real_auth));
+
+                /* Copy from hash to pcap_rmtauth */
+                hv = (HV *)SvRV(auth);
+                sv = hv_fetch(hv, "type", strlen("type"), 0);
+
+                if (sv != NULL)
+                    real_auth.type = SvIV(*sv);
+
+                sv = hv_fetch(hv, "username", strlen("username"), 0);
+
+                if (sv != NULL)
+                    real_auth.username = SvPV(*sv, PL_na);
+
+                sv = hv_fetch(hv, "password", strlen("password"), 0);
+
+                if (sv != NULL)
+                    real_auth.password = SvPV(*sv, PL_na);
+
+                preal_auth = &real_auth;
+            }
+
+            RETVAL = pcap_open(source, snaplen, flags, read_timeout, preal_auth, errbuf); 
+
+            if (RETVAL == NULL) {
+                sv_setpv(err_sv, errbuf);				
+            } else {
+                err_sv = &PL_sv_undef;
+            }  	  
+
+            safefree(errbuf);
+
+        } else
+            croak("arg5 not a hash ref");
+
+    OUTPUT:
+        RETVAL
+        err
+
+
+int
+pcap_setuserbuffer(p, size)
+    pcap_t *p
+    int size
+
+
+int
+pcap_setbuff(p, dim)
+    pcap_t *p
+    int dim
+
+
+int
+pcap_setmode (p, mode)
+    pcap_t *p
+    int mode
+
+
+int
+pcap_setmintocopy(p, size) 
+    pcap_t *p
+    int size
+
+
+void
+pcap_getevent(p)
+    pcap_t *p
+
+    PREINIT:
+        unsigned int h;
+
+    PPCODE:
+        h = (unsigned int) pcap_getevent(p);  
+        ST(0) = sv_newmortal();
+        sv_setref_iv(ST(0), "Win32::Event", h);
+        XSRETURN(1);
+
+ 
+int 
+pcap_sendpacket(p, buf)
+    pcap_t *p
+    SV *buf
+
+    CODE:
+        RETVAL = pcap_sendpacket(p, SvPVX(buf), sv_len(buf));  
+
+    OUTPUT:
+        RETVAL
+
+
+pcap_send_queue * 
+pcap_sendqueue_alloc(memsize)
+    u_int memsize
+
+
+MODULE = Net::Pcap PACKAGE = pcap_send_queuePtr
+
+void
+DESTROY(queue)
+    pcap_send_queue * queue
+
+    CODE:
+        pcap_sendqueue_destroy(queue);
+
+
+MODULE = Net::Pcap	PACKAGE = Net::Pcap	PREFIX = pcap_
+
+int
+pcap_sendqueue_queue(queue, header, p)
+    pcap_send_queue * queue
+    SV *header
+    SV *p
+
+    CODE:
+        /* Check that header is a hashref */
+        if (SvROK(header) && (SvTYPE(SvRV(header)) == SVt_PVHV)) {
+            struct pcap_pkthdr real_h;
+            char *real_p;
+            HV *hv;
+            SV **sv;
+
+            memset(&real_h, '\0', sizeof(real_h));
+
+            /* Copy from hash to pcap_pkthdr */
+            hv = (HV *)SvRV(header);
+
+            sv = hv_fetch(hv, "tv_sec", strlen("tv_sec"), 0);
+            if (sv != NULL) {
+                real_h.ts.tv_sec = SvIV(*sv);
+            }
+
+            sv = hv_fetch(hv, "tv_usec", strlen("tv_usec"), 0);
+            if (sv != NULL) {
+                real_h.ts.tv_usec = SvIV(*sv);
+            }
+
+            sv = hv_fetch(hv, "caplen", strlen("caplen"), 0);
+            if (sv != NULL) {
+                real_h.caplen = SvIV(*sv);
+            }
+
+            sv = hv_fetch(hv, "len", strlen("len"), 0);
+            if (sv != NULL) {
+                real_h.len = SvIV(*sv);
+            }
+
+            real_p = SvPV(p, PL_na);
+
+            /* Call pcap_sendqueue_queue() */
+            RETVAL = pcap_sendqueue_queue(queue, &real_h, (unsigned char *) real_p);
+
+        } else
+            croak("arg2 not a hash ref");
+
+    OUTPUT:
+        RETVAL	
+
+
+u_int
+pcap_sendqueue_transmit(p, queue, sync)
+    pcap_t *p
+    pcap_send_queue * queue
+    int sync
 

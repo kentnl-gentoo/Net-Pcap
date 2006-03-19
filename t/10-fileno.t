@@ -7,7 +7,7 @@ use lib 't';
 use Utils;
 
 plan skip_all => "no network device available" unless find_network_device();
-plan tests => 15;
+plan tests => 21;
 
 eval "use Test::Exception"; my $has_test_exception = !$@;
 
@@ -15,7 +15,7 @@ my($dev,$pcap,$filehandle,$fileno,$err) = ('','','','','');
 
 # Testing error messages
 SKIP: {
-    skip "Test::Exception not available", 4 unless $has_test_exception;
+    skip "Test::Exception not available", 6 unless $has_test_exception;
 
     # file() errors
     throws_ok(sub {
@@ -40,19 +40,19 @@ SKIP: {
        "calling fileno() with incorrect argument type");
 
     # get_selectable_fd() errors
-    #throws_ok(sub {
-    #    Net::Pcap::get_selectable_fd()
-    #}, '/^Usage: Net::Pcap::get_selectable_fd\(p\)/', 
-    #   "calling get_selectable_fd() with no argument");
+    throws_ok(sub {
+        Net::Pcap::get_selectable_fd()
+    }, '/^Usage: Net::Pcap::get_selectable_fd\(p\)/', 
+       "calling get_selectable_fd() with no argument");
 
-    #throws_ok(sub {
-    #    Net::Pcap::get_selectable_fd(0)
-    #}, '/^p is not of type pcap_tPtr/', 
-    #   "calling get_selectable_fd() with incorrect argument type");
+    throws_ok(sub {
+        Net::Pcap::get_selectable_fd(0)
+    }, '/^p is not of type pcap_tPtr/', 
+       "calling get_selectable_fd() with incorrect argument type");
 }
 
 SKIP: {
-    skip "must be run as root", 5 unless is_allowed_to_use_pcap();
+    skip "must be run as root", 7 unless is_allowed_to_use_pcap();
 
     # Find a device and open it
     $dev = find_network_device();
@@ -69,13 +69,13 @@ SKIP: {
     $fileno = undef;
     eval { $fileno = Net::Pcap::fileno($pcap) };
     is( $@, '', "fileno() on a live connection" );
-    like( $fileno, '/^\d+$/', " - fileno must be an integer" );
+    like( $fileno, '/^\d+$/', " - fileno must be an integer: $fileno" );
 
     # Testing get_selectable_fd()
-    #$fileno = undef;
-    #eval { $fileno = Net::Pcap::get_selectable_fd($pcap) };
-    #is( $@, '', "get_selectable_fd() on a live connection" );
-    #like( $fileno, '/^\d+$/', " - fileno must be an integer" );
+    $fileno = undef;
+    eval { $fileno = Net::Pcap::get_selectable_fd($pcap) };
+    is( $@, '', "get_selectable_fd() on a live connection" );
+    like( $fileno, '/^\d+$/', " - fileno must be an integer: $fileno" );
 
     Net::Pcap::close($pcap);
 }
@@ -100,14 +100,14 @@ is( $@, '', "fileno() on a dump file" );
 # to always return an actual file number. 
 TODO: {
     local $TODO = " => result should be -1";
-    like( $fileno, '/^(?:\d+|-1)$/', " - fileno must be an integer" );
+    like( $fileno, '/^(?:\d+|-1)$/', " - fileno must be an integer: $fileno" );
 }
 
 # Testing get_selectable_fd()
-#$fileno = undef;
-#eval { $fileno = Net::Pcap::get_selectable_fd($pcap) };
-#is( $@, '', "get_selectable_fd() on a dump file" );
-#like( $fileno, '/^\d+$/', " - fileno must be an integer: $fileno" );
+$fileno = undef;
+eval { $fileno = Net::Pcap::get_selectable_fd($pcap) };
+is( $@, '', "get_selectable_fd() on a dump file" );
+like( $fileno, '/^\d+$/', " - fileno must be an integer: $fileno" );
 
 Net::Pcap::close($pcap);
 

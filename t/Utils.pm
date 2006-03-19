@@ -20,9 +20,11 @@ the pcap library the module is being built against.
 =cut
 
 my %available_func = ();
-open(FUNCS, 'funcs.txt') or warn "can't read 'funcs.txt': $!\n";
-while(my $line = <FUNCS>) { chomp $line; $available_func{$line} = 1; }
-close(FUNCS);
+FUNCS: {
+    open(FUNCS, 'funcs.txt') or warn "can't read 'funcs.txt': $!\n" and next;
+    while(my $line = <FUNCS>) { chomp $line; $available_func{$line} = 1; }
+    close(FUNCS);
+}
 
 sub is_available {
     return $available_func{$_[0]}

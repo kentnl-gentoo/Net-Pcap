@@ -4,7 +4,7 @@
 # An interface to the LBL pcap(3) library.  This module simply
 # bootstraps the extensions defined in Pcap.xs
 #
-# Copyright (C) 2005 Sebastien Aperghis-Tramoni. All rights reserved.
+# Copyright (C) 2005, 2006 Sebastien Aperghis-Tramoni. All rights reserved.
 # Copyright (C) 2003 Marco Carnut. All rights reserved. 
 # Copyright (C) 1999-2000 Tim Potter. All rights reserved. 
 # Copyright (C) 1998 Bo Adler. All rights reserved. 
@@ -20,7 +20,7 @@ use AutoLoader;
 use Carp;
 
 {   no strict;
-    $VERSION = '0.11';
+    $VERSION = '0.12';
 
     @ISA = qw(Exporter DynaLoader);
 
@@ -46,25 +46,43 @@ use Carp;
             DLT_USER8  DLT_USER9  DLT_USER10  DLT_USER11  DLT_USER12  DLT_USER13
             DLT_USER14  DLT_USER15
         )], 
-        pcap => [qw(
+        mode => [qw(
             MODE_CAPT  MODE_MON  MODE_STAT
+        )],
+        openflag => [qw(
+            OPENFLAG_PROMISCUOUS  OPENFLAG_DATATX_UDP  OPENFLAG_NOCAPTURE_RPCAP
+        )],
+        pcap => [qw(
             PCAP_ERRBUF_SIZE    PCAP_IF_LOOPBACK
             PCAP_VERSION_MAJOR  PCAP_VERSION_MINOR
         )], 
+        rpcap => [qw(
+            RMTAUTH_NULL  RMTAUTH_PWD
+        )],
+        sample => [qw(
+            PCAP_SAMP_NOSAMP  PCAP_SAMP_1_EVERY_N  PCAP_SAMP_FIRST_AFTER_N_MS
+        )],
+        source => [qw(
+            PCAP_SRC_FILE  PCAP_SRC_IFLOCAL  PCAP_SRC_IFREMOTE
+        )],
         functions => [qw(
             lookupdev  findalldevs  lookupnet
-            open_live  open_dead  open_offline pcap_close
+            open_live  open_dead  open_offline  pcap_open  pcap_close
             dump_open  pcap_dump  dump_close  dump_file  dump_flush
-            dispatch  pcap_next loop  breakloop
+            compile  compile_nopcap  set_filter  freecode
+            dispatch  pcap_next  next_ex  loop  breakloop
             datalink  set_datalink  datalink_name_to_val  
             datalink_val_to_name  datalink_val_to_description
             snapshot  pcap_file  pcap_fileno  get_selectable_fd
             is_swapped  major_version  minor_version
             geterr strerror perror
             lib_version
+            createsrcstr  parsesrcstr
+            setbuff  setuserbuffer  setmode  setmintocopy  getevent  sendpacket
+            sendqueue_alloc  sendqueue_queue  sendqueue_transmit
         )], 
     );
-  
+
     @EXPORT = (
         @{$EXPORT_TAGS{pcap}}, 
         @{$EXPORT_TAGS{datalink}}, 
@@ -72,6 +90,8 @@ use Carp;
 
     @EXPORT_OK = (
         @{$EXPORT_TAGS{functions}}, 
+        @{$EXPORT_TAGS{mode}}, 
+        @{$EXPORT_TAGS{openflag}}, 
         @{$EXPORT_TAGS{bpf}}, 
     );
 
@@ -110,7 +130,7 @@ sub AUTOLOAD {
 
 
 # Functions aliases
-#*Net::Pcap::pcap_open   = \&Net::Pcap::open;
+*Net::Pcap::pcap_open   = \&Net::Pcap::open;
 *Net::Pcap::pcap_close  = \&Net::Pcap::close;
 *Net::Pcap::pcap_next   = \&Net::Pcap::next;
 *Net::Pcap::pcap_dump   = \&Net::Pcap::dump;
@@ -155,7 +175,7 @@ Net::Pcap - Interface to pcap(3) LBL packet capture library
 
 =head1 VERSION
 
-Version 0.11
+Version 0.12
 
 =head1 SYNOPSIS
 
@@ -225,11 +245,40 @@ C<:datalink> exports the data link types macros:
 
 =item *
 
-C<:pcap> exports a few C<pcap> constants: 
+C<:pcap> exports the following C<pcap> constants: 
 
-    MODE_CAPT  MODE_MON  MODE_STAT
     PCAP_ERRBUF_SIZE    PCAP_IF_LOOPBACK
     PCAP_VERSION_MAJOR  PCAP_VERSION_MINOR
+
+=item *
+
+C<:mode> exports the following constants:
+
+    MODE_CAPT  MODE_MON  MODE_STAT
+
+=item *
+
+C<:openflag> exports the following constants:
+
+    OPENFLAG_PROMISCUOUS  OPENFLAG_DATATX_UDP  OPENFLAG_NOCAPTURE_RPCAP
+
+=item *
+
+C<:source> exports the following constants:
+
+    PCAP_SRC_FILE  PCAP_SRC_IFLOCAL  PCAP_SRC_IFREMOTE
+
+=item *
+
+C<:sample> exports the following constants:
+
+    PCAP_SAMP_NOSAMP  PCAP_SAMP_1_EVERY_N  PCAP_SAMP_FIRST_AFTER_N_MS
+
+=item *
+
+C<:rpcap> exports the following constants:
+
+    RMTAUTH_NULL  RMTAUTH_PWD
 
 =item *
 
@@ -461,6 +510,37 @@ packet header.  If not packet is available, the return value and
 header is undefined.
 
 
+=item B<pcap_next_ex($pcap, \%header, \$packet)>
+
+=item B<Net::Pcap::next_ex($pcap, \%header, \$packet)>
+
+Reads the next available packet on the interface associated with packet 
+descriptor C<$pcap>, stores its header in C<\%header> and its data in 
+C<\$packet> and returns a success/failure indication: 
+
+=over 4
+
+=item *
+
+C<1> means that the packet was read without problems; 
+
+=item *
+
+C<0> means that packets are being read from a live capture, and the 
+timeout expired;
+
+=item *
+
+C<-1> means that an error occurred while reading the packet;
+
+=item *
+
+C<-2> packets are being read from a dump file, and there are no more 
+packets to read from the savefile.
+
+=back
+
+
 =item B<compile($pcap, \$filter, $filter_str, $optimize, $netmask)>
 
 =item B<Net::Pcap::compile($pcap, \$filter, $filter_str, $optimize, $netmask)>
@@ -474,12 +554,24 @@ function returns 0 if the compilation was successful, or -1 if there
 was a problem.
 
 
+=item B<compile_nopcap($snaplen, $linktype, \$filter, $filter_str, $optimize, $netmask)>
+
+=item B<Net::Pcap::compile_nopcap($snaplen, $linktype, \$filter, $filter_str, $optimize, $netmask)>
+
+Similar to C<compile()> except that instead of passing a C<$pcap> descriptor, 
+one passes C<$snaplen> and C<$linktype> directly. Returns -1 if there was an 
+error, but the error message is not available. 
+
+
 =item B<setfilter($pcap, $filter)>
 
 =item B<Net::Pcap::setfilter($pcap, $filter)>
 
 Associate the compiled filter stored in C<$filter> with the packet
 capture descriptor C<$pcap>.
+
+
+=item B<freecode($filter)>
 
 =item B<Net::Pcap::freecode($filter)>
 
@@ -533,6 +625,21 @@ retrieve the error text.
 Dump the packet described by header C<%header> and packet data C<$packet> 
 to the savefile associated with C<$dumper>.  The packet header has the
 same format as that passed to the C<Net::Pcap::loop()> callback.
+
+B<Example>
+
+    my $dump_file = 'network.dmp';
+    my $dev = Net::Pcap::lookupdev();
+    my $pcap = Net::Pcap::open_live($dev, 1024, 1, 0, \$err);
+
+    my $dumper = Net::Pcap::dump_open($pcap, $dump_file);
+    Net::Pcap::loop($pcap, 10, \&process_packet, '');
+    Net::Pcap::dump_close($dumper);
+
+    sub process_packet {
+        my($user_data, $header, $packet) = @_;
+        Net::Pcap::dump($dumper, $header, $packet);
+    }
 
 
 =item B<dump_file($dumper)>
@@ -747,6 +854,201 @@ against.
 =back
 
 
+=head2 WinPcap specific functions
+
+The following functions are only available with WinPcap, the Win32 port 
+of the Pcap library.  If a called function is not available, it will cleanly 
+C<croak()>. 
+
+=over 4
+
+=item B<createsrcstr(\$source, $type, $host, $port, $name, \$err)>
+
+=item B<Net::Pcap::createsrcstr(\$source, $type, $host, $port, $name, \$err)>
+
+Accepts a set of strings (host name, port, ...), and stores the complete 
+source string according to the new format (e.g. C<"rpcap://1.2.3.4/eth0">) 
+in C<$source>.
+
+This function is provided in order to help the user creating the source string 
+according to the new format. An unique source string is used in order to make 
+easy for old applications to use the remote facilities. Think about B<tcpdump(1)>, 
+for example, which has only one way to specify the interface on which the capture 
+has to be started. However, GUI-based programs can find more useful to specify 
+hostname, port and interface name separately. In that case, they can use this 
+function to create the source string before passing it to the C<pcap_open()> 
+function.
+
+Returns 0 if everything is fine, -1 if some errors occurred. The string 
+containing the complete source is returned in the C<$source> variable.
+
+
+=item B<parsesrcstr($source, \$type, \$host, \$port, \$name, \$err)>
+
+=item B<Net::Pcap::parsesrcstr($source, \$type, \$host, \$port, \$name, \$err)>
+
+Parse the source string and stores the pieces in which the source can be split 
+in the corresponding variables.
+
+This call is the other way round of C<pcap_createsrcstr()>. It accepts a 
+null-terminated string and it returns the parameters related to the source. 
+This includes:
+
+=over 4
+
+=item *
+
+the type of the source (file, WinPcap on a remote adapter, WinPcap on local 
+adapter), which is determined by the source prefix (C<PCAP_SRC_IF_STRING> 
+and so on);
+
+=item *
+
+the host on which the capture has to be started (only for remote captures);
+
+=item *
+
+the raw name of the source (file name, name of the remote adapter, name of 
+the local adapter), without the source prefix. The string returned does not 
+include the type of the source itself (i.e. the string returned does not 
+include C<"file://"> or C<"rpcap://"> or such).
+
+=back
+
+The user can omit some parameters in case it is not interested in them.
+
+Returns 0 if everything is fine, -1 if some errors occurred. The requested 
+values (host name, network port, type of the source) are returned into the 
+proper variables passed by reference.
+
+
+=item B<pcap_open($source, $snaplen, $flags, $read_timeout, \$auth, \$err)>
+
+=item B<Net::Pcap::open($source, $snaplen, $flags, $read_timeout, \$auth, \$err)>
+
+Open a generic source in order to capture / send (WinPcap only) traffic.
+
+The C<pcap_open()> replaces all the C<pcap_open_xxx()> functions with a single 
+call.
+
+This function hides the differences between the different C<pcap_open_xxx()> 
+functions so that the programmer does not have to manage different opening 
+function. In this way, the I<true> C<open()> function is decided according to the 
+source type, which is included into the source string (in the form of source 
+prefix).
+
+Returns a pointer to a pcap descriptor which can be used as a parameter to 
+the following calls (C<compile()> and so on) and that specifies an opened 
+WinPcap session. In case of problems, it returns C<undef> and the C<$err> 
+variable keeps the error message.
+
+
+=item B<setbuff($pcap, $dim)>
+
+=item B<Net::Pcap::setbuff($pcap, $dim)>
+
+Sets the size of the kernel buffer associated with an adapter.
+C<$dim> specifies the size of the buffer in bytes.
+The return value is 0 when the call succeeds, -1 otherwise.
+
+If an old buffer was already created with a previous call to
+C<setbuff()>, it is deleted and its content is discarded.
+C<open_live()> creates a S<1 MB> buffer by default.
+
+
+=item B<setuserbuffer($pcap, $size)>
+
+=item B<Net::Pcap::setbuff($pcap, $size)>
+
+I<Note: Undocumented public function>
+
+
+=item B<setmode($pcap, $mode)>
+
+=item B<Net::Pcap::setmode($pcap, $mode)>
+
+Sets the working mode of the interface C<$pcap> to C<$mode>.
+Valid values for C<$mode> are C<MODE_CAPT> (default capture mode) and
+C<MODE_STAT> (statistical mode).
+
+
+=item B<setmintocopy($pcap, $size)>
+
+=item B<Net::Pcap::setmintocopy($pcap_t, $size)>
+
+Changes the minimum amount of data in the kernel buffer that causes a read
+from the application to return (unless the timeout expires).
+
+
+=item B<getevent($pcap)>
+
+=item B<Net::Pcap::getevent($pcap)>
+
+Returns the C<Win32::Event> object associated with the interface 
+C<$pcap>. Can be used to wait until the driver's buffer contains some 
+data without performing a read. See L<Win32::Event>.
+
+
+=item B<sendpacket($pcap, $packet)>
+
+=item B<Net::Pcap::sendpacket($pcap, $packet)>
+
+Send a raw packet to the network. C<$pcap> is the interface that will be
+used to send the packet, C<$packet> contains the data of the packet to send
+(including the various protocol headers). The MAC CRC doesn't need to be
+included, because it is transparently calculated and added by the network
+interface driver. The return value is 0 if the packet is successfully sent,
+-1 otherwise.
+
+
+=item B<sendqueue_alloc($memsize)>
+
+=item B<Net::Pcap::sendqueue_alloc($memsize)>
+
+This function allocates and returns a send queue, i.e. a buffer containing 
+a set of raw packets that will be transmitted on the network with 
+C<sendqueue_transmit()>.
+
+C<$memsize> is the size, in bytes, of the queue, therefore it determines 
+the maximum amount of data that the queue will contain. This memory is 
+automatically deallocated when the queue ceases to exist.
+
+
+=item B<sendqueue_queue($queue, \%header, $packet)>
+
+=item B<Net::Pcap::sendqueue_queue($queue, \%header, $packet)>
+
+Adds a packet at the end of the send queue pointed by C<$queue>. The packet
+header C<%header> has the same format as that passed to the C<loop()> 
+callback. C<$ackekt> is a buffer with the data of the packet.
+
+The C<%headerr> header structure is the same used by WinPcap and libpcap to
+store the packets in a file, therefore sending a capture file is
+straightforward. "Raw packet" means that the sending application will have
+to include the protocol headers, since every packet is sent to the network
+I<as is>. The CRC of the packets needs not to be calculated, because it will
+be transparently added by the network interface.
+
+
+=item B<sendqueue_transmit($pcap, $queue, $sync)>
+
+=item B<Net::Pcap::sendqueue_transmit($pcap, $queue, $sync)>
+
+This function transmits the content of a queue to the wire. C<$pcapt> is
+the interface on which the packets will be sent, C<$queue> is to a
+C<send_queue> containing the packets to send, C<$sync> determines if the
+send operation must be synchronized: if it is non-zero, the packets are
+sent respecting the timestamps, otherwise they are sent as fast as
+possible.
+
+The return value is the amount of bytes actually sent. If it is smaller
+than the size parameter, an error occurred during the send. The error can
+be caused by a driver/adapter problem or by an inconsistent/bogus send
+queue.
+
+=back
+
+
 =head1 CONSTANTS
 
 C<Net::Pcap> exports by default the names of several constants in order to 
@@ -950,7 +1252,7 @@ David Morel, Scott Lanning, Rafael Garcia-Suarez, Karl Y. Pradene.
 
 =head1 COPYRIGHT
 
-Copyright (C) 2005 SE<eacute>bastien Aperghis-Tramoni. All rights reserved. 
+Copyright (C) 2005, 2006 SE<eacute>bastien Aperghis-Tramoni. All rights reserved. 
 
 Copyright (C) 2003 Marco Carnut. All rights reserved. 
 

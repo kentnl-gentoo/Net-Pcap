@@ -1,5 +1,21 @@
 The (quite complex) revision history for Net-Pcap
 
+2006.03.19 - 0.12 - Sebastien Aperghis-Tramoni (SAPER)
+  - [BUGFIX] Fixed stub for pcap_list_datalinks().
+  - [BUGFIX] Merged Jean-Louis Morel patch for Win32 and Cygwin.
+  - [FEATURE] Added wrappers for compile_nopcap(), get_selectable_fd(), next_ex()
+  - [FEATURE] Merged wrappers from Net::Pcap 0.04.02 for WinPcap functions 
+    createsrcstr(), parsesrcstr(), getevent(), open(), sendpacket(), 
+    sendqueue_alloc(), sendqueue_queue(), sendqueue_transmit(), setbuff(), 
+    setmintocopy(), setmode().
+  - [FEATURE] Added wrapper for WinPcap function setuserbuffer().
+  - [CODE] Added missing short names for compile(), set_filter(), freecode()
+  - [DIST] Fixed Makefile.PL so that pcapinfo is installed.
+  - [TESTS] Rewrote t/20-constants.t because future versions of ExtUtils::Constant 
+    will prevent the constant() function from being directly called.
+  - [TESTS] Added t/22-open.t, t/23-strsrc.t
+  - [TESTS] Updated t/03-openlive.t with diagnostics for FreeBSD and OpenBSD.
+
 2005.11.28 - 0.11 - Sebastien Aperghis-Tramoni (SAPER)
   - [CODE] Added the pcapinfo command.
   - [DIST] Cygwin installation was simplified and should now Just Work.
@@ -18,7 +34,7 @@ The (quite complex) revision history for Net-Pcap
     has no IP configured. Thanks to 
   - [TESTS] RT#15343: warnings when running t/14-datalink.t
   - [TESTS] Fixed another corner case in t/02-lookup.t thanks to Rafael Garcia-Suarez.
-  - [TESTS] t/Utils.pm now sets the environment to C. Thanks to Karl Y. Pradene.
+  - [TESTS] t/Utils.pm now sets the environment locale to C. Thanks to Karl Y. Pradene.
 
 2005.10.26 - 0.09 - Sebastien Aperghis-Tramoni (SAPER)
   - [BUGFIX] Restored compatibility with older versions of libpcap, namely the 

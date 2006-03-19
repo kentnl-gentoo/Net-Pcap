@@ -8,14 +8,14 @@ my($DEBUG,%options,$DEVNULL,$is_Win32,$has_Win32);
 
 if ($^O eq 'MSWin32') {
     $options{LIBS}    = '-lwpcap';
-    $options{DEFINE}  = '-DWINSOCK2_H_REQUESTED -D_WINPCAP';
+    $options{DEFINE}  = '-DWINSOCK2_H_REQUESTED -DWPCAP -DHAVE_REMOTE';
 
     # patch ActivePerl CORE/sys/socket.h
     win32_sys_socket_patch();
 
 } elsif ($^O eq 'cygwin') {
     $options{LIBS}    = '-lwpcap';
-    $options{DEFINE}  = '-D_WINPCAP -D_CYGWIN';
+    $options{DEFINE}  = '-DWPCAP -D_CYGWIN -DWIN32';
 
     cygwin_pcap_headers();
 
@@ -116,7 +116,9 @@ WriteMakefile(
     'VERSION_FROM'     => 'Pcap.pm',
     'ABSTRACT_FROM'    => 'Pcap.pm',
     'PL_FILES'         => {}, 
+    'EXE_FILES'        => [ 'bin/pcapinfo' ], 
     'PREREQ_PM'        => {
+        #'IO::Interface' => '0', # needed only for pcapinfo(1)
         'Test::More' => '0.45', 
     },
     dist => { 'COMPRESS' => "gzip -9f", 'SUFFIX'   => "gz" }, 
@@ -154,7 +156,10 @@ if(eval {require ExtUtils::Constant; 1}) {
         DLT_USER13 DLT_USER14 DLT_USER15 DLT_USER2 DLT_USER3 DLT_USER4
         DLT_USER5 DLT_USER6 DLT_USER7 DLT_USER8 DLT_USER9 MODE_CAPT
         MODE_MON MODE_STAT PCAP_ERRBUF_SIZE PCAP_IF_LOOPBACK
-        PCAP_VERSION_MAJOR PCAP_VERSION_MINOR));
+        PCAP_VERSION_MAJOR PCAP_VERSION_MINOR OPENFLAG_PROMISCUOUS 
+        OPENFLAG_DATATX_UDP OPENFLAG_NOCAPTURE_RPCAP RMTAUTH_NULL RMTAUTH_PWD
+        PCAP_SAMP_NOSAMP PCAP_SAMP_FIRST_AFTER_N_MS PCAP_SAMP_1_EVERY_N 
+        PCAP_SRC_FILE PCAP_SRC_IFLOCAL PCAP_SRC_IFREMOTE));
 
     ExtUtils::Constant::WriteConstants(
             NAME         => 'pcap',
@@ -228,7 +233,7 @@ sub cygwin_pcap_headers {
 
     for my $i (0..$#ARGV) {
         if($ARGV[$i] =~ /^INC=/) {
-            (undef,$incdir) = split /-I/, $ARGV[$i];
+            (undef,$incdir) = split /-I/, $ARGV[$i], 2;
             $ARGV[$i] = "INC=-I$localinc";
         }
     }
@@ -237,7 +242,7 @@ sub cygwin_pcap_headers {
     mkpath($localinc);
 
     eval 'use File::Copy';
-    for my $file (qw(pcap.h pcap-bpf.h pcap-int.h)) {
+    for my $file (qw(pcap.h pcap-bpf.h pcap-int.h pcap-stdinc.h Win32-Extensions.h bittypes.h ip6_misc.h)) {
         my $orig = File::Spec->catfile($incdir, $file);
         my $dest = File::Spec->catfile($localinc, $file);
         copy($orig, $dest);
@@ -525,17 +530,17 @@ sub detect_available_functions {
     # it using stdin/stdout means pipes, hence even harder to do it in 
     # a sane and portable way. Yuck!
     if($is_Win32) { # ActiveState
-        eval { xsystem("$Config{cpprun} -P $options{INC} $Config{cppflags} $header") };
+        eval { xsystem("$Config{cpprun} -P $options{INC} $options{DEFINE} $Config{cppflags} $header") };
         (my $ppiname = $header) =~ s/\.h$/.i/;
         rename $ppiname, $preprocessed;
     } else { # Unix and Cygwin
-        eval { xsystem("$Config{cpprun} $options{INC} $Config{cppflags} -o $preprocessed $header") };
+        eval { xsystem("$Config{cpprun} $options{INC} $options{DEFINE} $Config{cppflags} -o $preprocessed $header") };
     }
     die "\nerror: $@\n" if $@;
 
     # now parse the output file
     open(CPP, $preprocessed) 
-        or warn "Can't read file '$preprocessed' ($!). Skipping functions detection\n"
+        or warn "Can't read file '$preprocessed' ($!). Skipping functions detection.\n"
         and return '';
     while(<CPP>) {
         /(pcap_\w+)\s*\(/ and not $old_func{$1} and push @defines, $1

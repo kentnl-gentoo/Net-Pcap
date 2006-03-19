@@ -64,8 +64,8 @@ eval { $pcap = Net::Pcap::open_live($fakedev, 1024, 1, 0, \$err) };
 is(   $@,   '', "open_live()" );
 if($^O eq 'MSWin32' or $^O eq 'cygwin') {
     like( $err, '/^Error opening adapter:/', " - \$err must be set: $err" );
-} elsif($^O eq 'darwin') {
-    like( $err, "/^BIOCSETIF: $fakedev: Device not configured/", " - \$err must be set: $err" );
+} elsif($^O eq 'darwin' or $^O eq 'freebsd' or $^O eq 'openbsd') {
+    like( $err, "/^(?:BIOCSETIF: )?$fakedev: Device not configured/", " - \$err must be set: $err" );
 } else {
     like( $err, '/^ioctl: (?:No such device)/', " - \$err must be set: $err" );
 }
