@@ -37,7 +37,7 @@ SKIP: {
     # dump() errors
     throws_ok(sub {
         Net::Pcap::dump()
-    }, '/^Usage: Net::Pcap::dump\(p, h, sp\)/', 
+    }, '/^Usage: Net::Pcap::dump\(p, pkt_header, sp\)/', 
        "calling dump() with no argument");
 
     throws_ok(sub {

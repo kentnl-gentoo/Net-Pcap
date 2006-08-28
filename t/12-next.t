@@ -7,10 +7,10 @@ use Utils;
 
 my $total = 3;  # number of packets to process
 
-plan skip_all => "slowness and random failures... testing pcap_next() is a PITA";
+#plan skip_all => "slowness and random failures... testing pcap_next() is a PITA";
 plan skip_all => "must be run as root" unless is_allowed_to_use_pcap();
 plan skip_all => "no network device available" unless find_network_device();
-plan tests => $total * 16 + 3;
+plan tests => $total * 16 + 4;
 
 eval "use Test::Exception"; my $has_test_exception = !$@;
 

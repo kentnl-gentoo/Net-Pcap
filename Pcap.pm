@@ -20,7 +20,7 @@ use AutoLoader;
 use Carp;
 
 {   no strict;
-    $VERSION = '0.12';
+    $VERSION = '0.13';
 
     @ISA = qw(Exporter DynaLoader);
 
@@ -113,7 +113,7 @@ sub AUTOLOAD {
     no strict;
     my $constname;
     ($constname = $AUTOLOAD) =~ s/.*:://;
-    croak "&Net::Pcap::constant not defined" if $constname eq 'constant';
+    croak "Net::Pcap::constant() not defined" if $constname eq 'constant';
     my ($error, $val) = constant($constname);
     if ($error) { croak $error; }
 
@@ -175,7 +175,7 @@ Net::Pcap - Interface to pcap(3) LBL packet capture library
 
 =head1 VERSION
 
-Version 0.12
+Version 0.13
 
 =head1 SYNOPSIS
 
@@ -382,7 +382,7 @@ set with an appropriate error message.
 B<Example>
 
     $dev = Net::Pcap::lookupdev();
-    $pcap = Net::Pcap::open_live($dev, 1024, 1, \$err)
+    $pcap = Net::Pcap::open_live($dev, 1024, 1, 0, \$err)
         or die "Can't open device $dev: $err\n";
 
 
@@ -418,7 +418,7 @@ B<Example>
 
 =item B<Net::Pcap::loop($pcap, $count, \&callback, $user_data)>
 
-Read C<$cnt> packets from the packet capture descriptor C<$pcap> and call
+Read C<$count> packets from the packet capture descriptor C<$pcap> and call
 the perl function C<&callback> with an argument of C<$user_data>.  
 If C<$count> is negative, then the function loops forever or until an error 
 occurs. Returns 0 if C<$count> is exhausted, -1 on error, and -2 if the 
@@ -1171,8 +1171,7 @@ Currently known bugs:
 
 =item *
 
-the C<ps_recv> field is not correctly set; see F<t/07-stats.t>; 
-see L<http://rt.cpan.org/NoAuth/Bug.html?id=7371>
+the C<ps_recv> field is not correctly set; see F<t/07-stats.t>
 
 =item *
 
@@ -1209,6 +1208,11 @@ The source code for the C<pcap(3)> library is available from L<http://www.tcpdum
 
 The source code and binary for the Win32 version of the pcap library, WinPcap, 
 is available from L<http://www.winpcap.org/>
+
+I<Hacking Linux Exposed: Sniffing with Net::Pcap to stealthily managing iptables rules remotely>, 
+L<http://www.hackinglinuxexposed.com/articles/20030730.html>
+
+I<PerlMonks node about C<Net::Pcap>>, L<http://perlmonks.org/?node_id=170648>
 
 
 =head1 AUTHORS

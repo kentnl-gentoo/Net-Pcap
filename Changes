@@ -1,5 +1,16 @@
 The (quite complex) revision history for Net-Pcap
 
+2006.08.29 - 0.13 - Sebastien Aperghis-Tramoni (SAPER)
+  - [CODE] Cleaned the typemap. Thanks to "Ani" on FreeNode for pointing.
+  - [DIST] Fixed compile option to use -Wall only for gcc. Thanks to 
+    Wolf-Dietrich Fromm for pointing.
+  - [DIST] Detection code can now handle IBM compiler. Thanks to Wolf-Dietrich 
+    Fromm for the help.
+  - [TESTS] Fixed 05-dump.t, 10-fileno.t. Thanks to "Ani" on FreeNode.
+  - [DOC] Fixed small typo in README. Thanks to "Ani" on FreeNode.
+  - [DOC] Fixed small error in open_live() example. Thanks to Cindy Teel 
+    and Doug Baker.
+
 2006.03.19 - 0.12 - Sebastien Aperghis-Tramoni (SAPER)
   - [BUGFIX] Fixed stub for pcap_list_datalinks().
   - [BUGFIX] Merged Jean-Louis Morel patch for Win32 and Cygwin.

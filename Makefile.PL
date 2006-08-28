@@ -1,4 +1,5 @@
 use strict;
+use Config;
 use Cwd;
 use ExtUtils::MakeMaker;
 eval "use ExtUtils::MakeMaker::Coverage";
@@ -20,7 +21,7 @@ if ($^O eq 'MSWin32') {
     cygwin_pcap_headers();
 
 } else {
-    $options{CCFLAGS} = '-Wall' if $] >= 5.006;
+    $options{CCFLAGS} = '-Wall' if $Config{cc} eq 'gcc' and $] >= 5.006;
     $options{LIBS}    = '-lpcap';
 }
 
@@ -118,11 +119,11 @@ WriteMakefile(
     'PL_FILES'         => {}, 
     'EXE_FILES'        => [ 'bin/pcapinfo' ], 
     'PREREQ_PM'        => {
-        #'IO::Interface' => '0', # needed only for pcapinfo(1)
+        'IO::Interface' => '0', # needed for pcapinfo(1)
         'Test::More' => '0.45', 
     },
     dist => { 'COMPRESS' => "gzip -9f", 'SUFFIX'   => "gz" }, 
-    clean => { FILES => 'Net-Pcap-*' }, 
+    clean => { FILES => 'Net-Pcap-* macros.all' }, 
     %options,        # appropriate CCFLAFS, LDFLAGS and Define's
 );
 
@@ -534,7 +535,9 @@ sub detect_available_functions {
         (my $ppiname = $header) =~ s/\.h$/.i/;
         rename $ppiname, $preprocessed;
     } else { # Unix and Cygwin
-        eval { xsystem("$Config{cpprun} $options{INC} $options{DEFINE} $Config{cppflags} -o $preprocessed $header") };
+        my %ppopts = ( default => '-o', gcc => '-o', cc_r => '' );
+        my $ppopt = $ppopts{ $Config{cc} || 'default' };
+        eval { xsystem("$Config{cpprun} $options{INC} $options{DEFINE} $Config{cppflags} $header $ppopt $preprocessed") };
     }
     die "\nerror: $@\n" if $@;
 

@@ -7,8 +7,6 @@ Pcap.pm
 Pcap.xs
 typemap
 ppport.h
-macros
-macros.sh
 fallback/const-c.inc
 fallback/const-xs.inc
 stubs.inc

@@ -39,6 +39,7 @@ SKIP: {
     }, '/^p is not of type pcap_tPtr/', 
        "calling fileno() with incorrect argument type");
 
+    skip "pcap_get_selectable_fd() is not available", 2 unless is_available('pcap_get_selectable_fd');
     # get_selectable_fd() errors
     throws_ok(sub {
         Net::Pcap::get_selectable_fd()
@@ -71,6 +72,7 @@ SKIP: {
     is( $@, '', "fileno() on a live connection" );
     like( $fileno, '/^\d+$/', " - fileno must be an integer: $fileno" );
 
+    skip "pcap_get_selectable_fd() is not available", 2 unless is_available('pcap_get_selectable_fd');
     # Testing get_selectable_fd()
     $fileno = undef;
     eval { $fileno = Net::Pcap::get_selectable_fd($pcap) };
@@ -104,10 +106,13 @@ TODO: {
 }
 
 # Testing get_selectable_fd()
-$fileno = undef;
-eval { $fileno = Net::Pcap::get_selectable_fd($pcap) };
-is( $@, '', "get_selectable_fd() on a dump file" );
-like( $fileno, '/^\d+$/', " - fileno must be an integer: $fileno" );
+SKIP: {
+    skip "pcap_get_selectable_fd() is not available", 2 unless is_available('pcap_get_selectable_fd');
+    $fileno = undef;
+    eval { $fileno = Net::Pcap::get_selectable_fd($pcap) };
+    is( $@, '', "get_selectable_fd() on a dump file" );
+    like( $fileno, '/^\d+$/', " - fileno must be an integer: $fileno" );
+}
 
 Net::Pcap::close($pcap);
 

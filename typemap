@@ -5,12 +5,11 @@
 pcap_t *                T_PTROBJ
 pcap_dumper_t *         T_PTROBJ
 struct bpf_program *    T_PTROBJ
-bpf_u_int32             T_IV
+pcap_send_queue *       T_PTROBJ
+bpf_u_int32             T_UV
+u_int                   T_UV
 u_char *                T_PV
 const char *            T_PV
-FILE *                  T_IN
-pcap_send_queue *       T_PTROBJ
-u_int                   T_UV
 
 #
 # Input conversions
