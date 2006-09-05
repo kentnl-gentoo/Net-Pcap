@@ -20,7 +20,7 @@ use AutoLoader;
 use Carp;
 
 {   no strict;
-    $VERSION = '0.13';
+    $VERSION = '0.14';
 
     @ISA = qw(Exporter DynaLoader);
 
@@ -175,7 +175,7 @@ Net::Pcap - Interface to pcap(3) LBL packet capture library
 
 =head1 VERSION
 
-Version 0.13
+Version 0.14
 
 =head1 SYNOPSIS
 

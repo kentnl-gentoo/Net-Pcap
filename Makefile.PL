@@ -536,7 +536,7 @@ sub detect_available_functions {
         rename $ppiname, $preprocessed;
     } else { # Unix and Cygwin
         my %ppopts = ( default => '-o', gcc => '-o', cc_r => '' );
-        my $ppopt = $ppopts{ $Config{cc} || 'default' };
+        my $ppopt = $ppopts{ $Config{cc} } || $ppopts{default};
         eval { xsystem("$Config{cpprun} $options{INC} $options{DEFINE} $Config{cppflags} $header $ppopt $preprocessed") };
     }
     die "\nerror: $@\n" if $@;

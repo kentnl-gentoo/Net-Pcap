@@ -1,5 +1,9 @@
 The (quite complex) revision history for Net-Pcap
 
+2006.09.05 - 0.14 - Sebastien Aperghis-Tramoni (SAPER)
+  - [DIST] RT#21219: Now use a default flag.
+  - [TESTS] Bumped the required version of Test::Pod::Coverage up to 1.08.
+
 2006.08.29 - 0.13 - Sebastien Aperghis-Tramoni (SAPER)
   - [CODE] Cleaned the typemap. Thanks to "Ani" on FreeNode for pointing.
   - [DIST] Fixed compile option to use -Wall only for gcc. Thanks to 
