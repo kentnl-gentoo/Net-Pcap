@@ -8,8 +8,9 @@ DESCRIPTION
     The Net::Pcap module is a Perl binding to the LBL pcap(3) packet 
     capture library.
 
-    The source code for the LBL pcap library can be found at 
-    http://www.tcpdump.org/
+    The latest source code for the Pcap library can be found at 
+    <http://www.tcpdump.org/>.  The source code and binary for the 
+    Win32 port can be found at <http://www.winpcap.org/>.
 
 
 INSTALLATION
@@ -20,7 +21,7 @@ INSTALLATION
         $ perl Makefile.PL INC=-I/usr/local/include/pcap \
             LIBS='-L/usr/lib/pcap -lpcap'
 
-    Compile the extension as per usual:
+    Then compile the extension as per usual:
 
         $ make
         $ make test
@@ -29,7 +30,7 @@ INSTALLATION
     To install the extension in a private directory, you can use the
     PREFIX option when creating Makefile.PL.
 
-    A ANSI-compliant compiler is required to compile the extension. 
+    An ANSI-compliant compiler is required to compile the extension. 
     For most of the tests, an administrative account is required 
     since opening a network interface in promiscuous mode is a 
     privileged operation.  Some tests also require a working network 
@@ -38,28 +39,21 @@ INSTALLATION
     address on your network segment.  Consult the source for individual 
     tests for more information.
 
-    Net::Pcap has been tested by the author on the following systems, 
-    but is likely to run on many more:
-
-      - Linux 2.6, gcc 3.4.1
-      - FreeBSD 4.7, gcc 2.95.4
-      - Mac OS X 10.4, gcc 4.0
-
     Net::Pcap is compatible with all the versions of the Pcap library, 
     including the old BSD ones and the Windows port WinPcap.
 
     Net::Pcap should work on any Perl since 5.004_05. This module has 
-    been tested by the author to check that it works with the following 
-    versions ot Perl: 
+    been tested by the author on the following Perl and system versions
+    but is likely to run on many more:
 
-      - Perl 5.4.5 i686-linux (custom build)
-      - Perl 5.5.3 i686-linux (custom build)
-      - Perl 5.6.2 i686-linux (custom build)
-      - Perl 5.8.5 i386-linux-thread-multi (vendor build)
-      - Perl 5.6.1 i386-freebsd (custom build)
-      - Perl 5.8.7 i386-freebsd (custom build)
-      - Perl 5.8.6 darwin (vendor build)
-      - Perl 5.8.7 cygwin-thread-multi-64int (vendor build)
+      Perl    Architecture                            GCC     Pcap
+      -------------------------------------------------------------
+      5.4.5   i686-linux                              3.4.1   0.8.3
+      5.5.3   i686-linux                              3.4.1   0.8.3
+      5.6.2   i686-linux                              3.4.1   0.8.3
+      5.8.5   i386-linux-thread-multi                 3.4.1  
+      5.8.8   i386-freebsd-64int                      3.4.4
+      5.8.6   darwin-thread-multi-2level (PowerPC)    4.0.1
 
     For Perl 5.004, you may need to install ExtUtils::Constant with 
     this patch: 

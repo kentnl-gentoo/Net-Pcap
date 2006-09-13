@@ -1,5 +1,12 @@
 The (quite complex) revision history for Net-Pcap
 
+2006.09.11 - 0.15_01 - Sebastien Aperghis-Tramoni (SAPER)
+  - [DIST] Rewrote the functions detection code using DynaLoader.
+  - [TESTS] Fixed small typo in warning message from t/podcover.t. Thanks
+    to "Ani" on FreeNode.
+  - [DOC] Improved documentation.
+  - [EG] Added example script eg/pktdump.pl
+
 2006.09.05 - 0.14 - Sebastien Aperghis-Tramoni (SAPER)
   - [DIST] RT#21219: Now use a default flag.
   - [TESTS] Bumped the required version of Test::Pod::Coverage up to 1.08.

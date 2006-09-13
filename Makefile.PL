@@ -103,9 +103,9 @@ REASON
 # missing functions with croaking stubs. 
 # We also store the list of available functions in a file for skipping the 
 # corresponding tests. 
-my @funcs = detect_available_functions();
-$options{DEFINE} .= list_to_defines(@funcs);
-open(FUNCS, '>funcs.txt') or warn "can't write 'funcs.txt': $!\n";
+my @funcs = have_functions(find_functions());
+$options{DEFINE} .= cpp_defines(@funcs);
+open(FUNCS, '>funcs.txt') or warn "warning: can't write 'funcs.txt': $!\n";
 print FUNCS join("\n", @funcs), "\n";
 close(FUNCS);
 
@@ -260,6 +260,7 @@ sub cygwin_pcap_headers {
 ###################################################################
 
 use Config;
+use DynaLoader;
 use Symbol;
 
 BEGIN {
@@ -277,9 +278,11 @@ BEGIN {
 sub rm_f {
     my @files = @_;
     my @realfiles;
+
     foreach (@files) {
         push @realfiles, glob($_);
     }
+
     if (@realfiles) {
         chmod(0777, @realfiles);
         unlink(@realfiles);
@@ -289,15 +292,18 @@ sub rm_f {
 sub rm_fr {
     my @files = @_;
     my @realfiles;
+
     foreach (@files) {
         push @realfiles, glob($_);
     }
+
     foreach my $file (@realfiles) {
         if (-d $file) {
             # warn("$file is a directory\n");
             rm_fr("$file/*");
             rm_fr("$file/.exists");
             rmdir($file) || die "Couldn't remove $file: $!";
+
         } else {
             # warn("removing $file\n");
             chmod(0777, $file);
@@ -308,6 +314,7 @@ sub rm_fr {
 
 sub xsystem {
     my $command = shift;
+
     if ($DEBUG) {
         print "\nxsystem: ", $command, "\n";
         if (system($command) != 0) {
@@ -315,6 +322,7 @@ sub xsystem {
         }
         return 1;
     }
+
     open(OLDOUT, ">&STDOUT");
     open(OLDERR, ">&STDERR");
     open(STDOUT, ">$DEVNULL");
@@ -322,23 +330,21 @@ sub xsystem {
     my $retval = system($command);
     open(STDOUT, ">&OLDOUT");
     open(STDERR, ">&OLDERR");
-    if ($retval != 0) {
-        die "system call to '$command' failed";
-    }
+    die "system call to '$command' failed" if $retval != 0;
     return 1;
 }
 
 sub backtick {
     my $command = shift;
+
     if ($DEBUG) {
         print $command, "\n";
         my $results = `$command`;
         chomp $results;
-        if ($? != 0) {
-            die "backticks call to '$command' failed";
-        }
+        die "backticks call to '$command' failed" if $? != 0;
         return $results;
     }
+
     open(OLDOUT, ">&STDOUT");
     open(OLDERR, ">&STDERR");
     open(STDOUT, ">$DEVNULL");
@@ -347,16 +353,17 @@ sub backtick {
     my $retval = $?;
     open(STDOUT, ">&OLDOUT");
     open(STDERR, ">&OLDERR");
-    if ($retval != 0) {
-        die "backticks call to '$command' failed";
-    }
+    die "backticks call to '$command' failed" if $retval != 0;
     chomp $results;
     return $results;
 }
 
 sub try_link0 {
     my ($src, $opt) = @_;
+
     my $cfile = gensym();
+    $opt ||= '';
+    
     # local $options{LIBS};
     # $options{LIBS} .= $opt;
     unless (mkdir(".testlink", 0777)) {
@@ -424,9 +431,7 @@ EOT
 
 sub try_link {
     my $start_dir = cwd();
-    my $result = eval {
-        try_link0(@_);
-    };
+    my $result = eval { try_link0(@_) };
     warn $@ if $DEBUG && $@;
     chdir($start_dir);
     rm_fr(".testlink");
@@ -502,9 +507,31 @@ SRC
     return 1;
 }
 
-# old functions are hard-coded for libpcap, but you get the idea
-sub detect_available_functions {
-    my @defines = ();
+
+sub have_functions {
+    my @funcs = ();
+    print "detecting available functions... ";
+
+    my @paths = DynaLoader::dl_findfile(qw(-lpcap));
+    my $libref = DynaLoader::dl_load_file($paths[0]);
+
+    for my $func (@_) {
+        my $symref = DynaLoader::dl_find_symbol($libref, $func);
+        push @funcs, $func if defined $symref
+    }
+
+    print "ok\n";
+    return @funcs
+}
+
+sub cpp_defines {
+    return join '', sort map { " -DHAVE_\U$_" } @_
+}
+
+
+sub find_functions {
+    # these functions are present since the very beginning so there's no need
+    # to search for them
     my %old_func = map { $_ => 1 } qw(
         pcap_lookupdev  pcap_lookupnet  pcap_open_live  pcap_open_offline
         pcap_close      pcap_loop       pcap_dispatch   pcap_next   pcap_stats
@@ -514,48 +541,17 @@ sub detect_available_functions {
         pcap_perror     pcap_strerror   pcap_geterr
     );
 
-    print "trying to detect actually available functions... ";
+    my @funcs = ();
 
-    # create a file that include pcap.h
-    my $header = 'find-funcs.h';
-    my $preprocessed = 'cpp-out.h';
-    open(HEADER, ">$header") 
-        or warn "Can't write basic header ($!). Skipping functions detection.\n" 
-        and return '';
-    print HEADER "#include <pcap.h>\n";
-    close(HEADER);
-
-    # now preprocess this header
-    # Unfortunately, this is not very portable right now because there is 
-    # no Config stuff for calling the C preprocessor on files. And calling 
-    # it using stdin/stdout means pipes, hence even harder to do it in 
-    # a sane and portable way. Yuck!
-    if($is_Win32) { # ActiveState
-        eval { xsystem("$Config{cpprun} -P $options{INC} $options{DEFINE} $Config{cppflags} $header") };
-        (my $ppiname = $header) =~ s/\.h$/.i/;
-        rename $ppiname, $preprocessed;
-    } else { # Unix and Cygwin
-        my %ppopts = ( default => '-o', gcc => '-o', cc_r => '' );
-        my $ppopt = $ppopts{ $Config{cc} } || $ppopts{default};
-        eval { xsystem("$Config{cpprun} $options{INC} $options{DEFINE} $Config{cppflags} $header $ppopt $preprocessed") };
+    # search for the functions list in the documentation
+    open(PM, '<Pcap.pm') or die "fatal: can't read 'Pcap.pm': $!\n";
+    while (my $line = <PM>) {
+        next unless $line =~ /^=item +B<Net::Pcap::(\w+)\(.*\)>$/;
+        push @funcs, "pcap_$1" unless $old_func{"pcap_$1"};
     }
-    die "\nerror: $@\n" if $@;
 
-    # now parse the output file
-    open(CPP, $preprocessed) 
-        or warn "Can't read file '$preprocessed' ($!). Skipping functions detection.\n"
-        and return '';
-    while(<CPP>) {
-        /(pcap_\w+)\s*\(/ and not $old_func{$1} and push @defines, $1
-    }
-    close(CPP);
+    close(PM);
 
-    unlink($header,$preprocessed);
-
-    print "ok\n";
-    return @defines
+    return @funcs
 }
 
-sub list_to_defines {
-    return join '', sort map { " -DHAVE_\U$_" } @_
-}

@@ -6,9 +6,9 @@ use Net::Pcap;
 plan tests => 2;
 
 # Testing lib_version()
-my $version = '';
-eval { $version = Net::Pcap::lib_version() };
+my $version = eval { Net::Pcap::lib_version() };
 is( $@, '', "lib_version()" );
+diag($version);
 if ($^O eq 'MSWin32' or $^O eq 'cygwin') {
     like( $version, '/^WinPcap version \d\.\d+/', " - checking version string ($version)" );
 } else {

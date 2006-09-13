@@ -11,6 +11,7 @@ fallback/const-c.inc
 fallback/const-xs.inc
 stubs.inc
 bin/pcapinfo
+eg/pktdump.pl
 t/Utils.pm
 t/00-load.t
 t/01-api.t

@@ -20,7 +20,7 @@ use AutoLoader;
 use Carp;
 
 {   no strict;
-    $VERSION = '0.14';
+    $VERSION = '0.15_01';
 
     @ISA = qw(Exporter DynaLoader);
 
@@ -175,7 +175,7 @@ Net::Pcap - Interface to pcap(3) LBL packet capture library
 
 =head1 VERSION
 
-Version 0.14
+Version 0.15
 
 =head1 SYNOPSIS
 
@@ -301,7 +301,7 @@ for more information.
 
 Arguments that change a parameter, for example C<Net::Pcap::lookupdev()>,
 are passed that parameter as a reference.  This is to retain
-compatibility with previous versions of B<Net::Pcap>.
+compatibility with previous versions of C<Net::Pcap>.
 
 =head2 Lookup functions
 
@@ -439,22 +439,22 @@ following fields.
 
 =over 4
 
-=item * C<len>
+=item * 
 
-The total length of the packet.
+C<len> - the total length of the packet.
 
-=item * C<caplen>
+=item * 
 
-The actual captured length of the packet data.  This corresponds to
-the snapshot length parameter passed to C<Net::Pcap::open_live()>.
+C<caplen> - the actual captured length of the packet data.  This corresponds 
+to the snapshot length parameter passed to C<open_live()>.
 
-=item * C<tv_sec>
+=item *
 
-Seconds value of the packet timestamp.
+C<tv_sec> - seconds value of the packet timestamp.
 
-=item * C<tv_usec>
+=item *
 
-Microseconds value of the packet timestamp.
+C<tv_usec> - microseconds value of the packet timestamp.
 
 =back
 
@@ -767,17 +767,17 @@ capture device C<$pcap>.  The hash contains the following fields.
 
 =over 4
 
-=item * C<ps_recv>
+=item *
 
-The number of packets received by the packet capture software.
+C<ps_recv> - the number of packets received by the packet capture software.
 
-=item * C<ps_drop>
+=item *
 
-The number of packets dropped by the packet capture software.
+C<ps_drop> - the number of packets dropped by the packet capture software.
 
-=item * C<ps_ifdrop>
+=item *
 
-The number of packets dropped by the network interface.
+C<ps_ifdrop> - the number of packets dropped by the network interface.
 
 =back
 
@@ -1208,6 +1208,8 @@ The source code for the C<pcap(3)> library is available from L<http://www.tcpdum
 
 The source code and binary for the Win32 version of the pcap library, WinPcap, 
 is available from L<http://www.winpcap.org/>
+
+=head2 Articles
 
 I<Hacking Linux Exposed: Sniffing with Net::Pcap to stealthily managing iptables rules remotely>, 
 L<http://www.hackinglinuxexposed.com/articles/20030730.html>
