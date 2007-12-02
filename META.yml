@@ -1,12 +1,18 @@
-# http://module-build.sourceforge.net/META-spec.html
-#XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
-name:         Net-Pcap
-version:      0.15_01
-version_from: Pcap.pm
-installdirs:  site
-requires:
-    IO::Interface:                 0
+--- #YAML:1.0
+name:                Net-Pcap
+version:             0.15
+abstract:            Interface to pcap(3) LBL packet capture library
+license:             perl
+author:              
+    - Sebastien Aperghis-Tramoni <sebastien@aperghis.net>
+generated_by:        ExtUtils::MakeMaker version 6.38
+distribution_type:   module
+requires:     
+    Carp:                          0
+    Socket:                        0
+    Sys::Hostname:                 0
     Test::More:                    0.45
-
-distribution_type: module
-generated_by: ExtUtils::MakeMaker version 6.30
+    XSLoader:                      0
+meta-spec:
+    url:     http://module-build.sourceforge.net/META-spec-v1.3.html
+    version: 1.3

@@ -3,7 +3,7 @@
  *
  * XS wrapper for LBL pcap(3) library.
  *
- * Copyright (C) 2005, 2006 Sebastien Aperghis-Tramoni with code by 
+ * Copyright (C) 2005, 2006, 2007 Sebastien Aperghis-Tramoni with code by 
  *      Jean-Louis Morel. All rights reserved.
  * Copyright (C) 2003 Marco Carnut. All rights reserved. 
  * Copyright (C) 1999 Tim Potter. All rights reserved. 
@@ -56,15 +56,14 @@ void callback_wrapper(u_char *user, const struct pcap_pkthdr *h, const u_char *p
     HV *hdr     = newHV();
     SV *ref_hdr = newRV_inc((SV*)hdr);
 
-    /* Push arguments onto stack */
-
-    dSP;
-
-    hv_store(hdr, "tv_sec", strlen("tv_sec"), newSViv(h->ts.tv_sec), 0);
+    /* Fill the hash fields */
+    hv_store(hdr, "tv_sec",  strlen("tv_sec"),  newSViv(h->ts.tv_sec),  0);
     hv_store(hdr, "tv_usec", strlen("tv_usec"), newSViv(h->ts.tv_usec), 0);
-    hv_store(hdr, "caplen", strlen("caplen"), newSVuv(h->caplen), 0);
-    hv_store(hdr, "len", strlen("len"), newSVuv(h->len), 0);	
+    hv_store(hdr, "caplen",  strlen("caplen"),  newSVuv(h->caplen),     0);
+    hv_store(hdr, "len",     strlen("len"),     newSVuv(h->len),        0);	
 
+    /* Push arguments onto stack */
+    dSP;
     PUSHMARK(sp);
     XPUSHs((SV*)user);
     XPUSHs(ref_hdr);
@@ -72,11 +71,9 @@ void callback_wrapper(u_char *user, const struct pcap_pkthdr *h, const u_char *p
     PUTBACK;
 
     /* Call perl function */
-
     call_sv (callback_fn, G_DISCARD);
 
     /* Decrement refcount to temp SVs */
-
     SvREFCNT_dec(packet);
     SvREFCNT_dec(hdr);
     SvREFCNT_dec(ref_hdr);
@@ -100,7 +97,7 @@ pcap_lookupdev(err)
 			SV *err_sv = SvRV(err);
 
 			RETVAL = pcap_lookupdev(errbuf);
-#ifdef _WPCAP
+#ifdef WPCAP
 			{
 				int length = lstrlenW((PWSTR)RETVAL) + 2;
 				char *r = safemalloc(length);  /* Conversion from Unicode to ANSI */
@@ -108,7 +105,7 @@ pcap_lookupdev(err)
 				lstrcpyA(RETVAL, r);
 				safefree(r);
 			}
-#endif
+#endif /* WPCAP */
 			if (RETVAL == NULL) {
 				sv_setpv(err_sv, errbuf);
 			} else {
@@ -472,7 +469,6 @@ pcap_next_ex(p, pkt_header, pkt_data)
     CODE:
         /* Check if pkt_header is a hashref and pkt_data a scalarref */
         if (SvROK(pkt_header) && (SvTYPE(SvRV(pkt_header)) == SVt_PVHV) && SvROK(pkt_data)) {
-
 			struct pcap_pkthdr *header;
 			const u_char *data;
 			U32 SAVE_signals;
@@ -493,7 +489,7 @@ pcap_next_ex(p, pkt_header, pkt_data)
                 hv_store(hv, "caplen",  strlen("caplen"),  newSVuv(header->caplen),     0);
                 hv_store(hv, "len",     strlen("len"),     newSVuv(header->len),        0);	
 
-				pkt_data = newSVpv(data, header->caplen);
+                sv_setpvn((SV *)SvRV(pkt_data), data, header->caplen);
             }
 
         } else {
@@ -973,7 +969,7 @@ pcap_sendqueue_alloc(memsize)
     u_int memsize
 
 
-MODULE = Net::Pcap PACKAGE = pcap_send_queuePtr
+MODULE = Net::Pcap      PACKAGE = pcap_send_queuePtr
 
 void
 DESTROY(queue)
