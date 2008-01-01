@@ -1,8 +1,8 @@
-#!/usr/bin/perl -T
+#!perl -T
 use strict;
 use Test::More;
-eval "use Test::Portability::Files";
-plan skip_all => "Test::Portability::Files required for testing filenames portability" if $@;
+plan skip_all => "Test::Portability::Files required for testing filenames portability"
+    unless eval "use Test::Portability::Files; 1";
 
 # run the selected tests
 run_tests();

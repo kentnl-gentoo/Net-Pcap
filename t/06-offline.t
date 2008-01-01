@@ -1,4 +1,4 @@
-#!/usr/bin/perl -T
+#!perl -T
 use strict;
 use Test::More;
 use Net::Pcap;
@@ -11,7 +11,7 @@ plan skip_all => "must be run as root" unless is_allowed_to_use_pcap();
 plan skip_all => "no network device available" unless find_network_device();
 plan tests => $total * 19 * 2 + 23;
 
-eval "use Test::Exception"; my $has_test_exception = !$@;
+my $has_test_exception = eval "use Test::Exception; 1";
 
 my($dev,$pcap,$dumper,$dump_file,$err) = ('','','','');
 
@@ -63,7 +63,8 @@ sub store_packet {
     for my $field (qw(len caplen tv_sec tv_usec)) {
         ok( exists $header->{$field}, "    - field '$field' is present" );
         ok( defined $header->{$field}, "    - field '$field' is defined" );
-        like( $header->{$field}, '/^\d+$/', "    - field '$field' is a number" );
+        like( $header->{$field}, '/^\d+$/', 
+            "    - field '$field' is a number: $header->{$field}" );
     }
 
     ok( $header->{caplen} <= $header->{len}, "    - caplen <= len" );
@@ -117,7 +118,8 @@ sub read_packet {
     for my $field (qw(len caplen tv_sec tv_usec)) {
         ok( exists $header->{$field}, "    - field '$field' is present" );
         ok( defined $header->{$field}, "    - field '$field' is defined" );
-        like( $header->{$field}, '/^\d+$/', "    - field '$field' is a number" );
+        like( $header->{$field}, '/^\d+$/', 
+            "    - field '$field' is a number: $header->{$field}" );
     }
 
     ok( $header->{caplen} <= $header->{len}, "    - caplen <= len" );
@@ -132,19 +134,10 @@ sub read_packet {
 Net::Pcap::loop($pcap, $total, \&read_packet, $user_text);
 is( $count, $total, "all packets processed" );
 
-if($^O eq 'MSWin32' or $^O eq 'cygwin') {
-    TODO: {
-        local $TODO = "caplen is wrong on Win32, dunno why";
-        is_deeply( \@data1, \@data2, "checking data" );
-    }
-} else {
+TODO: {
+    local $TODO = "caplen is sometimes wrong, dunno why";
     is_deeply( \@data1, \@data2, "checking data" );
 }
-#eval "use Test::Deep";      my $has_test_deep = !$@;
-#SKIP: {
-#    skip "Test::Deep not available", 1 unless $has_test_deep;
-#    cmp_deeply( \@data1, \@data2, "checking data" );
-#}
 
 Net::Pcap::close($pcap);
 unlink($dump_file);

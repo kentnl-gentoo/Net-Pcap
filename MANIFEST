@@ -12,6 +12,7 @@ fallback/const-xs.inc
 stubs.inc
 bin/pcapinfo
 eg/pktdump.pl
+eg/pcapdump
 t/Utils.pm
 t/00-load.t
 t/01-api.t
@@ -34,7 +35,13 @@ t/17-lib_version.t
 t/18-open_dead.t
 t/19-breakloop.t
 t/20-constants.t
+t/21-next_ex.t
+t/22-open.t
+t/23-srcstr.t
+t/50-poe-component-pcap.t
+t/distchk.t
 t/podcover.t
+t/podspell.t
 t/pod.t
 t/portfs.t
 t/README

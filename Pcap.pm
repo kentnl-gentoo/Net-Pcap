@@ -4,7 +4,7 @@
 # An interface to the LBL pcap(3) library.  This module simply
 # bootstraps the extensions defined in Pcap.xs
 #
-# Copyright (C) 2005, 2006, 2007 Sebastien Aperghis-Tramoni. All rights reserved.
+# Copyright (C) 2005, 2006, 2007, 2008 Sebastien Aperghis-Tramoni. All rights reserved.
 # Copyright (C) 2003 Marco Carnut. All rights reserved. 
 # Copyright (C) 1999, 2000 Tim Potter. All rights reserved. 
 # Copyright (C) 1998 Bo Adler. All rights reserved. 
@@ -30,7 +30,7 @@ my @func_short_names = qw(
     datalink_val_to_description
     snapshot  is_swapped  major_version  minor_version  stats
     file  fileno  get_selectable_fd  geterr  strerror  perror
-    lib_version  createsrcstr  parsesrcstr  open  setbuff  setbuff
+    lib_version  createsrcstr  parsesrcstr  open  setbuff  setuserbuffer
     setmode  setmintocopy  getevent  sendpacket
     sendqueue_alloc  sendqueue_queue  sendqueue_transmit
 );
@@ -42,14 +42,14 @@ my @func_long_names = map { "pcap_$_" } @func_short_names;
 {
     no strict "refs";
     for my $func (@func_short_names) {
-        *{ __PACKAGE__ . "::pcap_$func" } = \&{ __PACKAGE__ . $func }
+        *{ __PACKAGE__ . "::pcap_$func" } = \&{ __PACKAGE__ . "::" . $func }
     }
 }
 
 
 {
     no strict "vars";
-    $VERSION = '0.15';
+    $VERSION = '0.16';
 
     @ISA = qw(Exporter);
 
@@ -144,11 +144,13 @@ sub AUTOLOAD {
     no strict "vars";
     my $constname;
     ($constname = $AUTOLOAD) =~ s/.*:://;
+    return if $constname eq "DESTROY";
     croak "Net::Pcap::constant() not defined" if $constname eq 'constant';
     my ($error, $val) = constant($constname);
     if ($error) { croak $error; }
 
-    {   no strict "refs";
+    {
+        no strict "refs";
 	# Fixed between 5.005_53 and 5.005_61
 #XXX    if ($] >= 5.00561) {
 #XXX        *$AUTOLOAD = sub () { $val };
@@ -198,7 +200,7 @@ Net::Pcap - Interface to pcap(3) LBL packet capture library
 
 =head1 VERSION
 
-Version 0.15
+Version 0.16
 
 =head1 SYNOPSIS
 
@@ -1196,7 +1198,7 @@ David Morel, Scott Lanning, Rafael Garcia-Suarez, Karl Y. Pradene.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright (C) 2005, 2006, 2007 SE<eacute>bastien Aperghis-Tramoni.
+Copyright (C) 2005, 2006, 2007, 2008 SE<eacute>bastien Aperghis-Tramoni.
 All rights reserved. 
 
 Copyright (C) 2003 Marco Carnut. All rights reserved. 

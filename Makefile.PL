@@ -5,7 +5,8 @@ use ExtUtils::MakeMaker;
 eval "use ExtUtils::MakeMaker::Coverage";
 use File::Spec;
 
-my($DEBUG,%options,$DEVNULL,$is_Win32,$has_Win32);
+
+my ($DEBUG, %options, $DEVNULL, $is_Win32, $has_Win32);
 
 if ($^O eq 'MSWin32') {
     $options{LIBS}    = '-lwpcap';
@@ -13,15 +14,15 @@ if ($^O eq 'MSWin32') {
 
     # patch ActivePerl CORE/sys/socket.h
     win32_sys_socket_patch();
-
-} elsif ($^O eq 'cygwin') {
+}
+elsif ($^O eq 'cygwin') {
     $options{LIBS}    = '-lwpcap';
     $options{DEFINE}  = '-DWPCAP -D_CYGWIN -DWIN32';
 
     cygwin_pcap_headers();
-
-} else {
-    $options{CCFLAGS} = '-Wall' if $Config{cc} eq 'gcc' and $] >= 5.006;
+}
+else {
+    $options{CCFLAGS} = '-Wall -Wwrite-strings' if $Config{ccname} eq 'gcc' and $] >= 5.006;
     $options{LIBS}    = '-lpcap';
 }
 
@@ -37,7 +38,7 @@ for my $arg (@ARGV) {
 #      in recent version and is the only function that can be called 
 #      with no argument.
 if ($has_Win32) { # ActivePerl, Cygwin
-    die <<"REASON" unless have_library('wpcap', 'blank', 'pcap');
+    warn <<"REASON" and exit unless have_library('wpcap', 'blank', 'pcap');
         - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 The WinPcap driver is not installed on this machine. \a
 
@@ -62,7 +63,7 @@ Or get and install the WinPcap developer's pack from
 REASON
 
 } else { # other systems (Unix)
-    die <<"REASON" unless have_library('pcap');
+    warn <<"REASON" and exit unless have_library('pcap');
         - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 You appear to lack the pcap(3) library. \a
 
@@ -136,12 +137,13 @@ WriteMakefile(
     %options,        # appropriate CCFLAFS, LDFLAGS and Define's
 );
 
-if(eval {require ExtUtils::Constant; 1}) {
+if (eval { require ExtUtils::Constant; 1 }) {
     # If you edit these definitions to change the constants used by this module,
     # you will need to use the generated const-c.inc and const-xs.inc
     # files to replace their "fallback" counterparts before distributing your
     # changes.
-    my @names = (qw(BPF_A BPF_ABS BPF_ADD BPF_ALIGNMENT BPF_ALU BPF_AND BPF_B
+    my @names = (qw(
+        BPF_A BPF_ABS BPF_ADD BPF_ALIGNMENT BPF_ALU BPF_AND BPF_B
         BPF_DIV BPF_H BPF_IMM BPF_IND BPF_JA BPF_JEQ BPF_JGE BPF_JGT
         BPF_JMP BPF_JSET BPF_K BPF_LD BPF_LDX BPF_LEN BPF_LSH
         BPF_MAJOR_VERSION BPF_MAXBUFSIZE BPF_MAXINSNS BPF_MEM
@@ -169,7 +171,8 @@ if(eval {require ExtUtils::Constant; 1}) {
         PCAP_VERSION_MAJOR PCAP_VERSION_MINOR OPENFLAG_PROMISCUOUS 
         OPENFLAG_DATATX_UDP OPENFLAG_NOCAPTURE_RPCAP RMTAUTH_NULL RMTAUTH_PWD
         PCAP_SAMP_NOSAMP PCAP_SAMP_FIRST_AFTER_N_MS PCAP_SAMP_1_EVERY_N 
-        PCAP_SRC_FILE PCAP_SRC_IFLOCAL PCAP_SRC_IFREMOTE));
+        PCAP_SRC_FILE PCAP_SRC_IFLOCAL PCAP_SRC_IFREMOTE
+    ));
 
     ExtUtils::Constant::WriteConstants(
             NAME         => 'pcap',
@@ -182,13 +185,19 @@ if(eval {require ExtUtils::Constant; 1}) {
     open(MACROS, '>macros.all') or warn "can't write 'macros.all': $!\n";
     print MACROS join $/, @names;
     close(MACROS);
-
-} else {
-    eval 'use File::Copy';
+}
+elsif (eval "use File::Copy; 1") {
     foreach my $file ('const-c.inc', 'const-xs.inc') {
         my $fallback = File::Spec->catfile('fallback', $file);
         copy ($fallback, $file) or die "Can't copy $fallback to $file: $!";
     }
+}
+else {
+    die <<"REASON"
+        - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Your Perl installation lacks both File::Copy and ExtUtils::Constant.\a
+        - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+REASON
 }
 
 

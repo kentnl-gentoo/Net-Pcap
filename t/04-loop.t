@@ -1,4 +1,4 @@
-#!/usr/bin/perl -T
+#!perl -T
 use strict;
 use Test::More;
 use Net::Pcap;
@@ -11,7 +11,7 @@ plan skip_all => "must be run as root" unless is_allowed_to_use_pcap();
 plan skip_all => "no network device available" unless find_network_device();
 plan tests => $total * 19 + 5;
 
-eval "use Test::Exception"; my $has_test_exception = !$@;
+my $has_test_exception = eval "use Test::Exception; 1";
 
 my($dev,$pcap,$err) = ('','','');
 
@@ -62,11 +62,9 @@ sub process_packet {
     $count++;
 }
 
-my $retval = 0;
-eval { $retval = Net::Pcap::loop($pcap, $total, \&process_packet, $user_text) };
+my $retval = eval { Net::Pcap::loop($pcap, $total, \&process_packet, $user_text) };
 is(   $@,   '', "loop()" );
 is( $count, $total, "all packets processed" );
 is( $retval, 0, "checking return value" );
 
 Net::Pcap::close($pcap);
-

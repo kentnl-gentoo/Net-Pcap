@@ -3,7 +3,7 @@
  *
  * XS wrapper for LBL pcap(3) library.
  *
- * Copyright (C) 2005, 2006, 2007 Sebastien Aperghis-Tramoni with code by 
+ * Copyright (C) 2005, 2006, 2007, 2008 Sebastien Aperghis-Tramoni with code by 
  *      Jean-Louis Morel. All rights reserved.
  * Copyright (C) 2003 Marco Carnut. All rights reserved. 
  * Copyright (C) 1999 Tim Potter. All rights reserved. 
@@ -47,6 +47,8 @@ extern "C" {
 #endif
 
 
+typedef struct bpf_program  pcap_bpf_program_t;
+
 /* Wrapper for callback function */
 
 SV *callback_fn;
@@ -80,7 +82,7 @@ void callback_wrapper(u_char *user, const struct pcap_pkthdr *h, const u_char *p
 }
 
 
-MODULE = Net::Pcap	PACKAGE = Net::Pcap	 PREFIX = pcap_
+MODULE = Net::Pcap      PACKAGE = Net::Pcap     PREFIX = pcap_
 
 INCLUDE: const-xs.inc
 
@@ -132,7 +134,7 @@ pcap_lookupnet(device, net, mask, err)
 	CODE:
 		if (SvROK(net) && SvROK(mask) && SvROK(err)) {
 			char *errbuf = safemalloc(PCAP_ERRBUF_SIZE+1);
-			unsigned int netp, maskp;
+			bpf_u_int32 netp, maskp;
 			SV *net_sv  = SvRV(net);
 			SV *mask_sv = SvRV(mask);
 			SV *err_sv  = SvRV(err);
@@ -143,8 +145,8 @@ pcap_lookupnet(device, net, mask, err)
 			maskp = ntohl(maskp);
 
 			if (RETVAL != -1) {
-				sv_setiv(net_sv, netp);
-				sv_setiv(mask_sv, maskp);
+				sv_setuv(net_sv, netp);
+				sv_setuv(mask_sv, maskp);
 				err_sv = &PL_sv_undef;
 			} else {
 				sv_setpv(err_sv, errbuf);
@@ -564,10 +566,10 @@ pcap_compile(p, fp, str, optimize, mask)
 
 	CODE:
 		if (SvROK(fp)) {
-			struct bpf_program *real_fp = safemalloc(sizeof(struct bpf_program));
+			pcap_bpf_program_t *real_fp = safemalloc(sizeof(pcap_bpf_program_t));
 			*(pcap_geterr(p)) = '\0';   /* reset error string */
 			RETVAL = pcap_compile(p, real_fp, str, optimize, mask);
-			sv_setref_pv(SvRV(fp), "struct bpf_programPtr", (void *)real_fp);
+			sv_setref_pv(SvRV(fp), "pcap_bpf_program_tPtr", (void *)real_fp);
 
 		} else
 			croak("arg2 not a reference");
@@ -588,9 +590,9 @@ pcap_compile_nopcap(snaplen, linktype, fp, str, optimize, mask)
 
     CODE:
 		if (SvROK(fp)) {
-			struct bpf_program *real_fp = safemalloc(sizeof(struct bpf_program));
+			pcap_bpf_program_t *real_fp = safemalloc(sizeof(pcap_bpf_program_t));
 			RETVAL = pcap_compile_nopcap(snaplen, linktype, real_fp, str, optimize, mask);
-			sv_setref_pv(SvRV(fp), "struct bpf_programPtr", (void *)real_fp);
+			sv_setref_pv(SvRV(fp), "pcap_bpf_program_tPtr", (void *)real_fp);
 
 		} else
 			croak("arg3 not a reference");
@@ -603,12 +605,12 @@ pcap_compile_nopcap(snaplen, linktype, fp, str, optimize, mask)
 int 
 pcap_setfilter(p, fp)
 	pcap_t *p
-	struct bpf_program *fp
+	pcap_bpf_program_t *fp
 
 
 void
 pcap_freecode(fp)
-	struct bpf_program *fp
+	pcap_bpf_program_t *fp
 
 
 void
@@ -979,7 +981,7 @@ DESTROY(queue)
         pcap_sendqueue_destroy(queue);
 
 
-MODULE = Net::Pcap	PACKAGE = Net::Pcap	PREFIX = pcap_
+MODULE = Net::Pcap      PACKAGE = Net::Pcap     PREFIX = pcap_
 
 int
 pcap_sendqueue_queue(queue, header, p)

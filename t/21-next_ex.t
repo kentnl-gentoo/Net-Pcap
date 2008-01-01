@@ -7,10 +7,11 @@ use Utils;
 
 my $total = 3;  # number of packets to process
 
-plan skip_all => "pcap_next() behaves too strangely for being tested on random machines";
+plan skip_all => "pcap_next_ex() is not available" unless is_available('pcap_next_ex');
+plan skip_all => "slowness and random failures... testing pcap_next_ex() is a PITA";
 plan skip_all => "must be run as root" unless is_allowed_to_use_pcap();
 plan skip_all => "no network device available" unless find_network_device();
-plan tests => $total * 16 + 4;
+plan tests => $total * 17 + 4;
 
 my $has_test_exception = eval "use Test::Exception; 1";
 
@@ -24,23 +25,28 @@ $pcap = Net::Pcap::open_live($dev, 1024, 1, 0, \$err);
 
 # Testing error messages
 SKIP: {
-    skip "Test::Exception not available", 3 unless $has_test_exception;
+    skip "Test::Exception not available", 4 unless $has_test_exception;
 
-    # next() errors
+    # next_ex() errors
     throws_ok(sub {
-        Net::Pcap::next()
-    }, '/^Usage: Net::Pcap::next\(p, pkt_header\)/', 
-       "calling next() with no argument");
+        Net::Pcap::next_ex()
+    }, '/^Usage: Net::Pcap::next_ex\(p, pkt_header, pkt_data\)/', 
+       "calling next_ex() with no argument");
 
     throws_ok(sub {
-        Net::Pcap::next(0, 0)
+        Net::Pcap::next_ex(0, 0, 0)
     }, '/^p is not of type pcap_tPtr/', 
-       "calling next() with incorrect argument type for arg1");
+       "calling next_ex() with incorrect argument type for arg1");
 
     throws_ok(sub {
-        Net::Pcap::next($pcap, 0)
+        Net::Pcap::next_ex($pcap, 0, 0)
     }, '/^arg2 not a hash ref/', 
-       "calling next() with incorrect argument type for arg2");
+       "calling next_ex() with incorrect argument type for arg2");
+
+    throws_ok(sub {
+        Net::Pcap::next_ex($pcap, \%header, 0)
+    }, '/^arg3 not a scalar ref/', 
+       "calling next_ex() with incorrect argument type for arg3");
 
 }
 
@@ -48,12 +54,13 @@ SKIP: {
 Net::Pcap::compile($pcap, \$filter, "ip", 0, $mask);
 Net::Pcap::setfilter($pcap, $filter);
 
-# Test next()
+# Test next_ex()
 my $count = 0;
 for (1..$total) {
     my($packet, %header);
-    eval { $packet = Net::Pcap::next($pcap, \%header) };
-    is( $@, '', "next()" );
+    eval { $r = Net::Pcap::next_ex($pcap, \%header, \$packet) };
+    is( $@, '', "next_ex()" );
+    is( $r, 1, " - should return 1 ($r)" );
 
     for my $field (qw(len caplen tv_sec tv_usec)) {
         ok( exists $header{$field}, " - field '$field' is present" );

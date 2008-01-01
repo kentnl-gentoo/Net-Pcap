@@ -1,11 +1,11 @@
 --- #YAML:1.0
 name:                Net-Pcap
-version:             0.15
+version:             0.16
 abstract:            Interface to pcap(3) LBL packet capture library
 license:             perl
 author:              
     - Sebastien Aperghis-Tramoni <sebastien@aperghis.net>
-generated_by:        ExtUtils::MakeMaker version 6.38
+generated_by:        ExtUtils::MakeMaker version 6.42
 distribution_type:   module
 requires:     
     Carp:                          0
