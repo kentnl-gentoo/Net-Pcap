@@ -47,3 +47,4 @@ t/portfs.t
 t/README
 t/samples/ping-ietf-20pk-be.dmp
 t/samples/ping-ietf-20pk-le.dmp
+META.json                                Module JSON meta-data (added by MakeMaker)

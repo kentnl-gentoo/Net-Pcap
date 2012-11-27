@@ -4,7 +4,7 @@
 # An interface to the LBL pcap(3) library.  This module simply
 # bootstraps the extensions defined in Pcap.xs
 #
-# Copyright (C) 2005, 2006, 2007, 2008 Sebastien Aperghis-Tramoni. All rights reserved.
+# Copyright (C) 2005-2009 Sebastien Aperghis-Tramoni. All rights reserved.
 # Copyright (C) 2003 Marco Carnut. All rights reserved. 
 # Copyright (C) 1999, 2000 Tim Potter. All rights reserved. 
 # Copyright (C) 1998 Bo Adler. All rights reserved. 
@@ -15,7 +15,7 @@
 #
 package Net::Pcap;
 use strict;
-require Exporter;
+use Exporter ();
 use Carp;
 
 
@@ -49,7 +49,7 @@ my @func_long_names = map { "pcap_$_" } @func_short_names;
 
 {
     no strict "vars";
-    $VERSION = '0.16';
+    $VERSION = '0.17';
 
     @ISA = qw(Exporter);
 
@@ -110,12 +110,14 @@ my @func_long_names = map { "pcap_$_" } @func_short_names;
             createsrcstr  parsesrcstr
             setbuff  setuserbuffer  setmode  setmintocopy  getevent  sendpacket
             sendqueue_alloc  sendqueue_queue  sendqueue_transmit
-        ), @func_long_names ], 
+        )], 
     );
 
     @EXPORT = (
         @{$EXPORT_TAGS{pcap}}, 
         @{$EXPORT_TAGS{datalink}}, 
+        @func_long_names,
+        "UNSAFE_SIGNALS",
     );
 
     @EXPORT_OK = (
@@ -162,6 +164,12 @@ sub AUTOLOAD {
 }
 
 
+# pseudo-bloc to enable immediate (unsafe) signals delivery
+sub UNSAFE_SIGNALS (&) {
+    $_[0]->();
+}
+
+
 # Perl wrapper for DWIM
 sub findalldevs {
     croak "Usage: pcap_findalldevs(devinfo, err)"
@@ -200,7 +208,7 @@ Net::Pcap - Interface to pcap(3) LBL packet capture library
 
 =head1 VERSION
 
-Version 0.16
+Version 0.17
 
 =head1 SYNOPSIS
 
@@ -219,27 +227,64 @@ Version 0.16
     pcap_close($pcap);
 
     sub process_packet {
-        my($user_data, $header, $packet) = @_;
+        my ($user_data, $header, $packet) = @_;
         # do something ...
     }
 
 
 =head1 DESCRIPTION
 
-C<Net::Pcap> is a Perl binding to the LBL pcap(3) library.
-The README for libpcap describes itself as:
+C<Net::Pcap> is a Perl binding to the LBL pcap(3) library and its
+Win32 counterpart, the WinPcap library. Pcap (packet capture) is 
+a portable API to capture network packet: it allows applications 
+to capture packets at link-layer, bypassing the normal protocol 
+stack. It also provides features like kernel-level packet filtering
+and access to internal statistics.
 
-  "a system-independent interface for user-level packet capture.
-  libpcap provides a portable framework for low-level network
-  monitoring.  Applications include network statistics collection,
-  security monitoring, network debugging, etc."
+Common applications include network statistics collection, 
+security monitoring, network debugging, etc.
+
+
+=head1 NOTES
+
+=head2 Signals handling
+
+Since version 5.7.3, Perl uses a mechanism called "deferred signals"
+to delay signals delivery until "safe" points in the interpreter. 
+See L<perlipc/"Deferred Signals (Safe Signals)"> for a detailled
+explanation.
+
+Since C<Net::Pcap> version 0.08, released in October 2005, the module
+modified the internal variable C<PL_signals> to re-enable immediate
+signals delivery in Perl 5.8 and later within some XS functions
+(CPAN-RT #6320). However, it can create situations where the Perl
+interpreter is less stable and can crash (CPAN-RT #43308). Therefore,
+as of version 0.17, C<Net::Pcap> no longer modifies C<PL_signals> by
+itself, but provides facilities so the user has full control of how
+signals are delivered.
+
+First, there C<pcap_perl_settings()> function allows to select how
+signals are handled:
+
+    pcap_perl_settings(PERL_SIGNALS_UNSAFE);
+    pcap_loop($pcap, 10, \&process_packet, "");
+    pcap_perl_settings(PERL_SIGNALS_SAFE);
+
+Then, to easily make code interruptable, C<Net::Pcap> provides the
+C<UNSAFE_SIGNALS> pseudo-bloc:
+
+    UNSAFE_SIGNALS {
+        pcap_loop($pcap, 10, \&process_packet, "");
+    };
+
+(Stolen from Rafael Garcia-Suarez's C<Perl::Unsafe::Signals>)
 
 
 =head1 EXPORTS
 
 C<Net::Pcap> supports the following C<Exporter> tags: 
 
-=over 4
+=over
 
 =item *
 
@@ -253,19 +298,21 @@ C<:bpf> exports a few BPF related constants:
 C<:datalink> exports the data link types macros: 
 
     DLT_AIRONET_HEADER  DLT_APPLE_IP_OVER_IEEE1394  DLT_ARCNET
-    DLT_ARCNET_LINUX  DLT_ATM_CLIP  DLT_ATM_RFC1483  DLT_AURORA  DLT_AX25
-    DLT_CHAOS  DLT_CHDLC  DLT_CISCO_IOS  DLT_C_HDLC  DLT_DOCSIS  DLT_ECONET
-    DLT_EN10MB  DLT_EN3MB  DLT_ENC  DLT_FDDI  DLT_FRELAY  DLT_HHDLC
-    DLT_IBM_SN  DLT_IBM_SP  DLT_IEEE802  DLT_IEEE802_11  DLT_IEEE802_11_RADIO
-    DLT_IEEE802_11_RADIO_AVS  DLT_IPFILTER  DLT_IP_OVER_FC  DLT_JUNIPER_ATM1
-    DLT_JUNIPER_ATM2  DLT_JUNIPER_ES  DLT_JUNIPER_GGSN  DLT_JUNIPER_MFR
-    DLT_JUNIPER_MLFR  DLT_JUNIPER_MLPPP  DLT_JUNIPER_MONITOR  DLT_JUNIPER_SERVICES
-    DLT_LINUX_IRDA  DLT_LINUX_SLL  DLT_LOOP  DLT_LTALK  DLT_NULL  DLT_OLD_PFLOG
-    DLT_PCI_EXP  DLT_PFLOG  DLT_PFSYNC  DLT_PPP  DLT_PPP_BSDOS  DLT_PPP_ETHER
-    DLT_PPP_SERIAL  DLT_PRISM_HEADER  DLT_PRONET  DLT_RAW  DLT_RIO  DLT_SLIP
-    DLT_SLIP_BSDOS  DLT_SUNATM  DLT_SYMANTEC_FIREWALL  DLT_TZSP  DLT_USER0
-    DLT_USER1  DLT_USER2  DLT_USER3  DLT_USER4  DLT_USER5  DLT_USER6  DLT_USER7
-    DLT_USER8  DLT_USER9  DLT_USER10  DLT_USER11  DLT_USER12  DLT_USER13
+    DLT_ARCNET_LINUX  DLT_ATM_CLIP  DLT_ATM_RFC1483  DLT_AURORA
+    DLT_AX25  DLT_CHAOS  DLT_CHDLC  DLT_CISCO_IOS  DLT_C_HDLC
+    DLT_DOCSIS  DLT_ECONET  DLT_EN10MB  DLT_EN3MB  DLT_ENC  DLT_FDDI
+    DLT_FRELAY  DLT_HHDLC  DLT_IBM_SN  DLT_IBM_SP  DLT_IEEE802
+    DLT_IEEE802_11  DLT_IEEE802_11_RADIO DLT_IEEE802_11_RADIO_AVS
+    DLT_IPFILTER  DLT_IP_OVER_FC  DLT_JUNIPER_ATM1 DLT_JUNIPER_ATM2
+    DLT_JUNIPER_ES  DLT_JUNIPER_GGSN  DLT_JUNIPER_MFR DLT_JUNIPER_MLFR
+    DLT_JUNIPER_MLPPP  DLT_JUNIPER_MONITOR  DLT_JUNIPER_SERVICES
+    DLT_LINUX_IRDA  DLT_LINUX_SLL  DLT_LOOP  DLT_LTALK  DLT_NULL
+    DLT_OLD_PFLOG  DLT_PCI_EXP  DLT_PFLOG  DLT_PFSYNC  DLT_PPP
+    DLT_PPP_BSDOS  DLT_PPP_ETHER  DLT_PPP_SERIAL  DLT_PRISM_HEADER
+    DLT_PRONET  DLT_RAW  DLT_RIO  DLT_SLIP  DLT_SLIP_BSDOS  DLT_SUNATM
+    DLT_SYMANTEC_FIREWALL  DLT_TZSP  DLT_USER0  DLT_USER1  DLT_USER2
+    DLT_USER3  DLT_USER4  DLT_USER5  DLT_USER6  DLT_USER7  DLT_USER8
+    DLT_USER9  DLT_USER10  DLT_USER11  DLT_USER12  DLT_USER13
     DLT_USER14  DLT_USER15
 
 =item *
@@ -307,11 +354,7 @@ C<:rpcap> exports the following constants:
 
 =item *
 
-C<:functions> exports the function names with the same names as the C library, 
-so you can write C<pcap_lookupdev()> instead of C<Net::Pcap::lookupdev()> 
-for example. This should also ease porting C programs to Perl. 
-
-It also exports short names of the functions (without the C<"pcap_"> prefix) 
+C<:functions> short names of the functions (without the C<"pcap_"> prefix) 
 for those which would not cause a clash with an already defined name.
 Namely, the following functions are not available in short form: 
 C<open()>, C<close()>, C<next()>, C<dump()>, C<file()>, C<fileno()>. 
@@ -319,7 +362,8 @@ Using these short names is now discouraged, and may be removed in the future.
 
 =back
 
-The symbols from the C<:datalink> and C<:pcap> tags are exported by default. 
+By default, this module exports the symbols from the C<:datalink> and 
+C<:pcap> tags, and all the functions, with the same names as the C library. 
 
 
 =head1 FUNCTIONS
@@ -334,7 +378,7 @@ compatibility with previous versions of C<Net::Pcap>.
 
 =head2 Lookup functions
 
-=over 4
+=over
 
 =item B<pcap_lookupdev(\$err)>
 
@@ -393,7 +437,7 @@ C<$err> parameter is filled with an appropriate error message.
 
 =head2 Packet capture functions
 
-=over 4
+=over
 
 =item B<pcap_open_live($dev, $snaplen, $promisc, $to_ms, \$err)>
 
@@ -450,7 +494,7 @@ The callback function is also passed packet header information and
 packet data like so:
 
     sub process_packet {
-        my($user_data, $header, $packet) = @_;
+        my ($user_data, $header, $packet) = @_;
 
         ...
     }
@@ -458,7 +502,7 @@ packet data like so:
 The header information is a reference to a hash containing the
 following fields.
 
-=over 4
+=over
 
 =item * 
 
@@ -484,7 +528,7 @@ B<Example>
     pcap_loop($pcap, 10, \&process_packet, "user data");
 
     sub process_packet {
-        my($user_data, $header, $packet) = @_;
+        my ($user_data, $header, $packet) = @_;
         # ...
     }
 
@@ -529,7 +573,7 @@ Reads the next available packet on the interface associated with packet
 descriptor C<$pcap>, stores its header in C<\%header> and its data in 
 C<\$packet> and returns a success/failure indication: 
 
-=over 4
+=over
 
 =item *
 
@@ -605,7 +649,7 @@ sets C<$err>.
 
 =head2 Savefile commands
 
-=over 4
+=over
 
 =item B<pcap_dump_open($pcap, $filename)>
 
@@ -632,7 +676,7 @@ B<Example>
     pcap_dump_close($dumper);
 
     sub process_packet {
-        my($user_data, $header, $packet) = @_;
+        my ($user_data, $header, $packet) = @_;
         pcap_dump($dumper, $header, $packet);
     }
 
@@ -658,7 +702,7 @@ Close the savefile associated with the descriptor C<$dumper>.
 
 =head2 Status functions
 
-=over 4
+=over
 
 
 =item B<pcap_datalink($pcap)>
@@ -738,7 +782,7 @@ This function is supported only on live captures, not on savefiles;
 no statistics are stored in savefiles, so no statistics are available 
 when reading from a savefile.
 
-=over 4
+=over
 
 =item *
 
@@ -780,7 +824,7 @@ See L<pcap(3)> for more details.
 
 =head2 Error handling
 
-=over 4
+=over
 
 =item B<pcap_geterr($pcap)>
 
@@ -802,7 +846,7 @@ standard error, prefixed by C<$prefix>.
 
 =head2 Information
 
-=over 4
+=over
 
 =item B<pcap_lib_version()>
 
@@ -811,6 +855,36 @@ against.
 
 =back
 
+=head2 Perl specific functions
+
+The following functions are specific to the Perl binding of libpcap.
+
+=over
+
+=item B<pcap_perl_settings($setting)>
+
+Modify internal behaviour of the Perl interpreter.
+
+=over
+
+=item *
+
+C<PERL_SIGNALS_SAFE>, C<PERL_SIGNALS_UNSAFE> respectively enable safe
+or unsafe signals delivery. Returns the previous value of C<PL_signals>.
+See L<"Signals handling">.
+
+B<Example:>
+
+    local $SIG{ALRM} = sub { pcap_breakloop() };
+    alarm 60;
+
+    pcap_perl_settings(PERL_SIGNALS_UNSAFE);
+    pcap_loop($pcap, 10, \&process_packet, "");
+    pcap_perl_settings(PERL_SIGNALS_SAFE);
+
+=back
+
+=back
 
 =head2 WinPcap specific functions
 
@@ -818,7 +892,7 @@ The following functions are only available with WinPcap, the Win32 port
 of the Pcap library.  If a called function is not available, it will cleanly 
 C<croak()>. 
 
-=over 4
+=over
 
 =item B<pcap_createsrcstr(\$source, $type, $host, $port, $name, \$err)>
 
@@ -848,7 +922,7 @@ This call is the other way round of C<pcap_createsrcstr()>. It accepts a
 null-terminated string and it returns the parameters related to the source. 
 This includes:
 
-=over 4
+=over
 
 =item *
 
@@ -987,7 +1061,7 @@ constants are exported.
 Here are the descriptions of a few data link types. See L<pcap(3)> for a more 
 complete description and semantics associated with each data link. 
 
-=over 4
+=over
 
 =item *
 
@@ -1058,7 +1132,7 @@ C<DLT_APPLE_IP_OVER_IEEE1394> - Apple IP-over-IEEE 1394 (a.k.a. Firewire)
 
 =head1 DIAGNOSTICS
 
-=over 4
+=over
 
 =item C<arg%d not a scalar ref>
 
@@ -1076,7 +1150,7 @@ which expect one or more of its arguments to be references.
 
 The following limitations apply to this version of C<Net::Pcap>.
 
-=over 
+=over
 
 =item *
 
@@ -1090,13 +1164,13 @@ current at any time as they are both stored in global variables.
 
 Please report any bugs or feature requests to
 C<bug-Net-Pcap@rt.cpan.org>, or through the web interface at
-L<https://rt.cpan.org/NoAuth/Bugs.html?Dist=Net-Pcap>.
+L<http://rt.cpan.org/Dist/Display.html?Queue=Net-Pcap>.
 I will be notified, and then you'll automatically be notified
 of progress on your bug as I make changes.
 
 Currently known bugs: 
 
-=over 4
+=over
 
 =item *
 
@@ -1139,6 +1213,10 @@ L<POE::Component::Pcap> for using C<Net::Pcap> within POE-based programs.
 
 L<Net::Packet> or L<NetPacket> for decoding and creating network packets.
 
+L<Net::Pcap::Easy> is a module which provides an easier, more Perl-ish
+API than C<Net::Pcap> and integrates some facilities from L<Net::Netmask>
+and C<NetPacket>.
+
 =head2 Base Libraries
 
 L<pcap(3)>, L<tcpdump(8)>
@@ -1165,7 +1243,7 @@ E<lt>jl_morel@bribes.orgE<gt> for WinPcap support.
 
 Previous authors & maintainers: 
 
-=over 4
+=over
 
 =item *
 
@@ -1198,7 +1276,7 @@ David Morel, Scott Lanning, Rafael Garcia-Suarez, Karl Y. Pradene.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright (C) 2005, 2006, 2007, 2008 SE<eacute>bastien Aperghis-Tramoni.
+Copyright (C) 2005, 2006, 2007, 2008, 2009 SE<eacute>bastien Aperghis-Tramoni.
 All rights reserved. 
 
 Copyright (C) 2003 Marco Carnut. All rights reserved. 

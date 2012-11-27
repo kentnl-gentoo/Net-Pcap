@@ -1,5 +1,22 @@
 The revision history for Net-Pcap
 
+2012.11.28 - 0.17 - Sebastien Aperghis-Tramoni (SAPER)
+  - [BUGFIX] CPAN-RT#43308: Net::Pcap no longer enables immediate
+    (unsafe) signals delivery.
+  - [BUGFIX] Fix allocated size in pcap_open(), pcap_createsrcstr()
+    and pcap_parsesrcstr(). 
+  - [API] Now make the C-like API available by default. Added the
+    pcap_perl_settings() function and UNSAFE_SIGNALS pseudo-bloc.
+  - [CODE] Replaced all occurrences of safemalloc() with Newx().
+  - [CODE] Silenced some warnings.
+  - [DOC] Added a long note about Net::Pcap and signals delivery.
+  - [DOC] Improved README.
+  - [DOC] Mention Net::Pcap::Easy.
+  - [TESTS] Fixed t/17-lib_version.t to handle two digits versions.
+  - [TESTS] CPAN-RT#44448: Fixed t/17-lib_version.t to handle
+    versions from the CVS, thanks to Craig Davison.
+  - [TESTS] Refactored t/01-api.t and added checks for the new API.
+
 2008.01.01 - 0.16 - Sebastien Aperghis-Tramoni (SAPER)
   - [BUGFIX] A typo prevented the new function names from working.
   - [TESTS] Added new tests: 21-next_ex.t, 22-open.t, 23-srcstr.t, 
